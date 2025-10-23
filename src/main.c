@@ -1,4 +1,4 @@
-#include "tokenizer.h"
+#include "tokenizer/tokenizer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -28,7 +28,10 @@ int main(int argc, char** argv)
         if (token == NULL)
             break;
 
-        printf("%s(%s)\n", get_token_type_string(token->type), token->value);
+        if (token->type == TOKEN_TYPE_LINEBREAK)
+            printf("%s\n", get_token_type_string(token->type));
+        else
+            printf("%s(%s)\n", get_token_type_string(token->type), token->value);
         token_free(token);
     }
 
@@ -44,5 +47,9 @@ static char* get_token_type_string(TokenType type)
         return "IDENTIFIER";
     else if (type == TOKEN_TYPE_NUMBER)
         return "NUMBER";
+    else if (type == TOKEN_TYPE_LINEBREAK)
+        return "LINEBREAK";
+    else if (type == TOKEN_TYPE_INVALID)
+        return "INVALID";
     return NULL;
 }

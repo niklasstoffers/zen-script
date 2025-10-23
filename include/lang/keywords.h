@@ -5,4 +5,7 @@
 #define KEYWORD_EXHALE "exhale"
 #define KEYWORD_AS "as"
 
+extern const char* keywords[];
+extern const int num_keywords;
+
 #endif
