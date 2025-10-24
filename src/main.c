@@ -1,11 +1,13 @@
 #include "tokenizer/tokenizer.h"
 #include "parser/parser.h"
 #include "semantic/semantic_analyzer.h"
+#include "ir/tac.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 static char* get_token_type_string(TokenType type);
+static void print_tac_instruction(TACInstruction* instruction);
 static char* expression_to_string(Expression* expression);
 
 int main(int argc, char** argv)
@@ -103,6 +105,7 @@ int main(int argc, char** argv)
 
     printf("\n\n\n");
     SemanticErrorNode* semantic_error = semantic_errors->head;
+    bool had_semantic_error = semantic_error != NULL;
     while(semantic_error) 
     {
         switch (semantic_error->error->type)
@@ -114,6 +117,25 @@ int main(int argc, char** argv)
     }
 
     free_semantic_error_list(semantic_errors);
+    if (had_semantic_error)
+        return 1;
+
+    TACList* tac_list = NULL;
+    err = ast_to_tac(program, &tac_list);
+    if (err != ZENC_ERROR_OK)
+    {
+        printf("Could not convert AST to TAC: %s\n", zenc_strerror(err));
+        return 1;
+    }
+
+    printf("\n\n\n");
+    TACNode* tac_node = tac_list->head;
+    while (tac_node)
+    {
+        print_tac_instruction(tac_node->instruction);
+        tac_node = tac_node->next;
+    }
+        
     free_program(program);
     return 0;
 }
@@ -133,16 +155,23 @@ static char* get_token_type_string(TokenType type)
     return NULL;
 }
 
-// // Berechne Länge des benötigten Strings
-//     size_t len = snprintf(NULL, 0, "Expression: %s", expression->value);
-    
-//     // +1 für Null-Terminator
-//     char* str = (char*)malloc(len + 1);
-//     if (!str) return NULL;
-
-//     // String formatieren
-//     snprintf(str, len + 1, "Expression: %s", expression->value);
-//     return str; // Caller muss free() aufrufen!
+static void print_tac_instruction(TACInstruction* instruction)
+{
+    if (instruction->op == TAC_OPERATION_ASSIGN)
+    {
+        if (instruction->first->type == TAC_OPERAND_NUMBER)
+            printf("%s = %d\n", instruction->result, instruction->first->number);
+        else if (instruction->first->type == TAC_OPERAND_VARIABLE)
+            printf("%s = %s\n", instruction->result, instruction->first->variable);
+    }
+    else if (instruction->op == TAC_OPERATION_PRINT)
+    {
+        if (instruction->first->type == TAC_OPERAND_NUMBER)
+            printf("print %d\n", instruction->first->number);
+        else if (instruction->first->type == TAC_OPERAND_VARIABLE)
+            printf("print %s\n", instruction->first->variable);
+    }
+}
 
 static char* expression_to_string(Expression* expression)
 {
