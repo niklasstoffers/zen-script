@@ -24,6 +24,7 @@ ZencError parse_program(TokenStream* tokens, Program** program, ParserError* err
     if (!program_node)
         return ZENC_ERROR_NOMEM;
 
+    program_node->head = NULL;
     StatementNode* current_statement = NULL;
     TokenNode* current_token = tokens->head;
     while(current_token)
@@ -133,7 +134,7 @@ static ZencError parse_declaration(TokenNode** tokens, Declaration** declaration
     if (!identifier || !declaration_node)
     {
         free(identifier);
-        free_declaration(declaration_node);
+        free(declaration_node);
         free_expression(expression);
         return ZENC_ERROR_NOMEM;
     }
@@ -192,7 +193,7 @@ static ZencError parse_expression(TokenNode** tokens, Expression** expression, P
         int literal_value;
         if (!string_to_int(current->token->value, &literal_value))
         {
-            free_expression(expression_node);
+            free(expression_node);
             *error = PARSER_ERROR_INVALID;
             return ZENC_ERROR_OK;
         }
@@ -205,7 +206,7 @@ static ZencError parse_expression(TokenNode** tokens, Expression** expression, P
         char* identifier = strdup(current->token->value);
         if (!identifier)
         {
-            free_expression(expression_node);
+            free(expression_node);
             return ZENC_ERROR_NOMEM;
         }
 

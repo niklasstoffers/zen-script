@@ -87,6 +87,7 @@ ZencError tokenizer_tokenize(Tokenizer* tokenizer, TokenStream** stream, Tokeniz
     if (!token_stream)
         return ZENC_ERROR_NOMEM;
 
+    token_stream->head = NULL;
     TokenNode* current = NULL;
     while (true) 
     {
@@ -94,7 +95,7 @@ ZencError tokenizer_tokenize(Tokenizer* tokenizer, TokenStream** stream, Tokeniz
         ZencError err = tokenizer_next(tokenizer, &token);
         if (err != ZENC_ERROR_OK) 
         {
-            free(token_stream);
+            token_stream_free(token_stream);
             return err;
         }
 

@@ -68,6 +68,7 @@ ZencError symbol_add(SymbolTable* table, const char* symbol)
     {
         if (strcmp(node->symbol, symbol) == 0)
         {
+            free(new_node->symbol);
             free(new_node);
             return ZENC_ERROR_INVALID_ARG;
         }

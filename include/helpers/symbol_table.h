@@ -1,4 +1,4 @@
-#ifndef SYBMOL_TABLE_H
+#ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
 #include "lib/errors.h"

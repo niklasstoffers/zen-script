@@ -1,5 +1,6 @@
 #include "tokenizer/tokenizer.h"
 #include "parser/parser.h"
+#include "semantic/semantic_analyzer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -92,6 +93,27 @@ int main(int argc, char** argv)
         current_statement = current_statement->next;
     }
 
+    SemanticErrorList* semantic_errors = NULL;
+    err = validate_semantic(program, &semantic_errors);
+    if (err != ZENC_ERROR_OK)
+    {
+        printf("Semantic validation failed: %s\n", zenc_strerror(err));
+        return 1;
+    }
+
+    printf("\n\n\n");
+    SemanticErrorNode* semantic_error = semantic_errors->head;
+    while(semantic_error) 
+    {
+        switch (semantic_error->error->type)
+        {
+            case SEMANTIC_ERROR_REDECLARATION: printf("Redeclaration Error of symbol: %s\n", semantic_error->error->redeclaration->identifier); break;
+            case SEMANTIC_ERROR_UNDECLARED_IDENTIFIER: printf("Undeclared identifier: %s\n", semantic_error->error->undeclared_identifier->identifier); break;
+        }
+        semantic_error = semantic_error->next;
+    }
+
+    free_semantic_error_list(semantic_errors);
     free_program(program);
     return 0;
 }
