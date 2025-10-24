@@ -19,23 +19,41 @@ int main(int argc, char** argv)
     content[file_size] = '\0';
     fclose(fp);
 
-    Tokenizer* tokenizer = tokenizer_new(content);
+    Tokenizer* tokenizer = NULL;
+    ZencError err = tokenizer_new(content, &tokenizer);
     free(content);
 
-    Token* token = NULL;
-    while(true) {
-        token = tokenizer_next(tokenizer);
-        if (token == NULL)
-            break;
-
-        if (token->type == TOKEN_TYPE_LINEBREAK)
-            printf("%s\n", get_token_type_string(token->type));
-        else
-            printf("%s(%s)\n", get_token_type_string(token->type), token->value);
-        token_free(token);
-    }
+    TokenizerError* tokenizer_error = NULL;
+    TokenStream* stream = NULL;
+    err = tokenizer_tokenize(tokenizer, &stream, &tokenizer_error);
 
     tokenizer_free(tokenizer);
+
+    if (err != ZENC_ERROR_OK)
+    {
+        printf("Tokenization failed: %s\n", zenc_strerror(err));
+        return 1;
+    }
+    
+    if (tokenizer_error)
+    {
+        if (tokenizer_error->type == TOKENIZER_ERROR_INVALID_TOKEN)
+        {
+            printf("Invalid token detected: %s\n", tokenizer_error->invalid_token_error->token);
+            tokenizer_error_free(tokenizer_error);
+            return 1;
+        }
+    }
+
+    TokenNode* current = stream->head;
+    while(current) {
+        if (current->token->type == TOKEN_TYPE_LINEBREAK)
+            printf("%s\n", get_token_type_string(current->token->type));
+        else
+            printf("%s(%s), ", get_token_type_string(current->token->type), current->token->value);
+        current = current->next;
+    }
+
     return 0;
 }
 
