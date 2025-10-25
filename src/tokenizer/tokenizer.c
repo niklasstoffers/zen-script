@@ -1,52 +1,119 @@
 #include "tokenizer/tokenizer.h"
 #include "lang/keywords.h"
 #include "tokenizer/token_utils.h"
+#include "helpers/assertions.h"
 #include <string.h>
 #include <stdbool.h>
 
+static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token);
 static TokenType get_token_type(const char* token);
-static ZencError tokenizer_error_invalid_token(const char* token, TokenizerError** error);
+static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token);
 
-static void tokenizer_error_invalid_token_free(TokenizerErrorInvalidToken* error);
-static void token_node_free(TokenNode* node);
+static void token_free(Token* token);
+static void tokenizer_error_free(TokenizerError* error);
+
+DEFINE_TYPED_LIST(Token, token, token_free);
+DEFINE_TYPED_LIST(TokenizerError, tokenizer_error, tokenizer_error_free);
+DEFINE_TYPED_ITERATOR(Token, token);
+DEFINE_TYPED_ITERATOR(TokenizerError, tokenizer_error);
 
 ZencError tokenizer_new(char* input, Tokenizer** tokenizer)
 {
-    if (!input || !tokenizer)
-        return ZENC_ERROR_INVALID_ARG;
+    ASSERT_NOT_NULL(input);
+    ASSERT_NOT_NULL(tokenizer);
 
-    Tokenizer* t = (Tokenizer*)malloc(sizeof(Tokenizer));
-    if (!t)
-        return ZENC_ERROR_NOMEM;
+    Tokenizer* t = (Tokenizer*)calloc(1, sizeof(Tokenizer));
+    ASSERT_ALLOC(t);
 
-    t->input = strdup(input);
-    if (!t->input) 
-    {
-        free(t);
-        return ZENC_ERROR_NOMEM;
-    }
-        
+    ZencError err = ZENC_ERROR_OK;
+    char* tokenizer_input = strdup(input);
+    TokenList* token_list = NULL;
+    TokenizerErrorList* error_list = NULL;
+
+    err = token_list_new(&token_list);
+    if (IS_ERROR(err)) goto fail;
+    err = tokenizer_error_list_new(&error_list);
+    if (IS_ERROR(err)) goto fail;
+
+
+    t->input = tokenizer_input;
     t->input_length = strlen(t->input);
     t->pos = 0;
+    t->token_list = token_list;
+    t->error_list = error_list;
     
     *tokenizer = t;
     return ZENC_ERROR_OK;
+
+fail:
+    free(t);
+    free(tokenizer_input);
+    token_list_free(token_list);
+    tokenizer_error_list_free(error_list);
+    return err;
+}
+
+ZencError tokenizer_tokenize(Tokenizer* tokenizer)
+{
+    ASSERT_NOT_NULL(tokenizer);
+
+    ZencError err = ZENC_ERROR_OK;
+    Token* token = NULL;
+    do {
+        err = tokenizer_next(tokenizer, &token);
+        ASSERT_NO_ERROR(err);
+
+        if (token)
+        {
+            if (token->type == TOKEN_TYPE_INVALID)
+            {
+                err = add_invalid_token_error(tokenizer, token->value);
+                if (IS_ERROR(err)) goto fail;
+            }
+
+            err = token_list_append(tokenizer->token_list, token);
+            if (IS_ERROR(err)) goto fail;
+        }
+    } while(token != NULL);
+
+    return ZENC_ERROR_OK;
+
+fail:
+    token_free(token);
+    return err;
+}
+
+
+TokenList* tokenizer_get_token_list(Tokenizer* tokenizer)
+{
+    if (!tokenizer) return NULL;
+    return tokenizer->token_list;
+}
+
+bool tokenizer_had_error(Tokenizer* tokenizer)
+{
+    if (!tokenizer) return false;
+    return !tokenizer_error_list_is_empty(tokenizer->error_list);
+}
+
+TokenizerErrorList* tokenizer_get_errors(Tokenizer* tokenizer)
+{
+    if (!tokenizer) return NULL;
+    return tokenizer->error_list;
 }
 
 void tokenizer_free(Tokenizer* tokenizer)
 {
-    if (!tokenizer)
-        return;
+    RETURN_IF_NULL(tokenizer);
 
     free(tokenizer->input);
+    token_list_free(tokenizer->token_list);
+    tokenizer_error_list_free(tokenizer->error_list);
     free(tokenizer);
 }
 
-ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
+static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
 {
-    if (!tokenizer || !token)
-        return ZENC_ERROR_INVALID_ARG;
-
     *token = NULL;
     char* next_token = (char*)find_next_token(tokenizer->input + tokenizer->pos);
     if (!next_token)
@@ -56,16 +123,10 @@ ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
     size_t token_length = token_end - next_token;
     size_t new_tokenizer_pos = token_end - tokenizer->input;
     char *token_value = strndup(next_token, token_length);
-
-    if (!token_value)
-        return ZENC_ERROR_NOMEM;
+    ASSERT_ALLOC(token_value);
 
     Token* t = (Token*)malloc(sizeof(Token));
-    if (!t)
-    {
-        free(token_value);
-        return ZENC_ERROR_NOMEM;
-    }
+    ASSERT_ALLOC_FREE(t, token_value);
 
     t->value = token_value;
     t->length = token_length;
@@ -77,90 +138,6 @@ ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
     return ZENC_ERROR_OK;
 }
 
-ZencError tokenizer_tokenize(Tokenizer* tokenizer, TokenStream** stream, TokenizerError** error)
-{
-    if (!tokenizer || !stream || !error)
-        return ZENC_ERROR_INVALID_ARG;
-
-    *error = NULL;
-    TokenStream* token_stream = (TokenStream*)malloc(sizeof(TokenStream));
-    if (!token_stream)
-        return ZENC_ERROR_NOMEM;
-
-    token_stream->head = NULL;
-    TokenNode* current = NULL;
-    while (true) 
-    {
-        Token* token = NULL;
-        ZencError err = tokenizer_next(tokenizer, &token);
-        if (err != ZENC_ERROR_OK) 
-        {
-            token_stream_free(token_stream);
-            return err;
-        }
-
-        if (token)
-        {
-            if (token->type == TOKEN_TYPE_INVALID)
-            {
-                token_stream_free(token_stream);
-                err = tokenizer_error_invalid_token(token->value, error);
-                token_free(token);
-                return err;
-            }
-        }
-        else
-        {
-            break;
-        }
-
-        TokenNode* next = (TokenNode*)malloc(sizeof(TokenNode));
-        if (!next) 
-        {
-            token_free(token);
-            token_stream_free(token_stream);
-            return ZENC_ERROR_NOMEM;
-        }
-
-        next->token = token;
-        if (!current)
-            token_stream->head = next;
-        else
-            current->next = next;
-        current = next;
-    }
-
-    *stream = token_stream;
-    return ZENC_ERROR_OK;
-}
-
-void tokenizer_error_free(TokenizerError* error)
-{
-    if (!error)
-        return;
-
-    tokenizer_error_invalid_token_free(error->invalid_token_error);
-    free(error);
-}
-
-void token_stream_free(TokenStream* stream)
-{
-    if (!stream)
-        return;
-
-    token_node_free(stream->head);
-    free(stream);
-}
-
-void token_free(Token* token)
-{
-    if (!token)
-        return;
-
-    free(token->value);
-    free(token);
-}
-
 static TokenType get_token_type(const char* token)
 {
     if (token_is_keyword(token)) return TOKEN_TYPE_KEYWORD;
@@ -170,45 +147,40 @@ static TokenType get_token_type(const char* token)
     return TOKEN_TYPE_INVALID;
 }
 
-static ZencError tokenizer_error_invalid_token(const char* token, TokenizerError** error)
+static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token)
 {
-    TokenizerError* tokenizer_error = (TokenizerError*)malloc(sizeof(TokenizerError));
-    TokenizerErrorInvalidToken* invalid_token_error = (TokenizerErrorInvalidToken*)malloc(sizeof(TokenizerErrorInvalidToken));
-    char* token_value = strdup(token);
+    TokenizerError* error = (TokenizerError*)malloc(sizeof(TokenizerError));
+    ASSERT_ALLOC(error);
 
-    if (!tokenizer_error || !invalid_token_error || !token_value)
+    char* token_value = strdup(token);
+    ASSERT_ALLOC_FREE(token_value, error);
+
+    error->token = token_value;
+    error->line = 0;
+    error->pos = 0;
+
+    ZencError err = tokenizer_error_list_append(tokenizer->error_list, error);
+    if (IS_ERROR(err))
     {
-        free(tokenizer_error);
-        free(invalid_token_error);
-        free(token_value);
-        return ZENC_ERROR_NOMEM;
+        tokenizer_error_free(error);
+        return err;
     }
 
-    invalid_token_error->token = token_value;
-    invalid_token_error->line = 0;
-    invalid_token_error->pos = 0;
-    tokenizer_error->type = TOKENIZER_ERROR_INVALID_TOKEN;
-    tokenizer_error->invalid_token_error = invalid_token_error;
-
-    *error = tokenizer_error;
     return ZENC_ERROR_OK;
 }
 
-static void tokenizer_error_invalid_token_free(TokenizerErrorInvalidToken* error)
+static void token_free(Token* token)
 {
-    if (!error)
-        return;
-    
-    free(error->token);
-    free(error);
+    RETURN_IF_NULL(token);
+
+    free(token->value);
+    free(token);
 }
 
-static void token_node_free(TokenNode* node)
+static void tokenizer_error_free(TokenizerError* error)
 {
-    if (!node)
-        return;
-    
-    token_node_free(node->next);
-    token_free(node->token);
-    free(node);
+    RETURN_IF_NULL(error);
+
+    free(error->token);
+    free(error);
 }

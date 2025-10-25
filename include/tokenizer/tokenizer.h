@@ -2,61 +2,38 @@
 #define TOKENIZER_H
 
 #include "lib/errors.h"
+#include "tokenizer/tokens.h"
+#include "collections/typed_list.h"
+#include "collections/typed_list_iterator.h"
 #include <stdlib.h>
 
-typedef enum {
-    TOKEN_TYPE_INVALID,
-    TOKEN_TYPE_KEYWORD,
-    TOKEN_TYPE_IDENTIFIER,
-    TOKEN_TYPE_NUMBER,
-    TOKEN_TYPE_LINEBREAK
-} TokenType;
-
-typedef struct {
-    TokenType type;
-    char* value;
-    size_t length;
-} Token;
-
-typedef struct TokenNode {
-    Token* token;
-    struct TokenNode* next;
-} TokenNode;
-
-typedef struct {
-    TokenNode* head;
-} TokenStream;
-
-typedef enum {
-    TOKENIZER_ERROR_OK,
-    TOKENIZER_ERROR_INVALID_TOKEN
-} TokenizerErrorType;
+DECLARE_TYPED_LIST(Token, token);
+DECLARE_TYPED_ITERATOR(Token, token);
 
 typedef struct {
     char* token;
     int line;
     int pos;
-} TokenizerErrorInvalidToken;
-
-typedef struct {
-    TokenizerErrorType type;
-    union {
-        TokenizerErrorInvalidToken* invalid_token_error;
-    };
 } TokenizerError;
+
+DECLARE_TYPED_LIST(TokenizerError, tokenizer_error);
+DECLARE_TYPED_ITERATOR(TokenizerError, tokenizer_error);
 
 typedef struct {
     char* input;
     size_t input_length;
     size_t pos;
+
+    TokenList* token_list;
+    TokenizerErrorList* error_list;
 } Tokenizer;
 
 ZencError tokenizer_new(char* input, Tokenizer** tokenizer);
 void tokenizer_free(Tokenizer* tokenizer);
-ZencError tokenizer_next(Tokenizer* tokenizer, Token** token);
-ZencError tokenizer_tokenize(Tokenizer* tokenizer, TokenStream** stream, TokenizerError** error);
-void tokenizer_error_free(TokenizerError* error);
-void token_stream_free(TokenStream* stream);
-void token_free(Token* token);
+
+ZencError tokenizer_tokenize(Tokenizer* tokenizer);
+TokenList* tokenizer_get_token_list(Tokenizer* tokenizer);
+bool tokenizer_had_error(Tokenizer* tokenizer);
+TokenizerErrorList* tokenizer_get_errors(Tokenizer* tokenizer);
 
 #endif

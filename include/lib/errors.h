@@ -5,6 +5,7 @@ typedef enum {
     ZENC_ERROR_OK,
     ZENC_ERROR_INVALID_ARG,
     ZENC_ERROR_NOMEM,
+    ZENC_ERROR_SYSTEM,
     ZENC_ERROR_INTERNAL
 } ZencError;
 

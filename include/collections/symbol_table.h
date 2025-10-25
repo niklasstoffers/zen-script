@@ -18,7 +18,7 @@ typedef struct {
 ZencError symbol_table_new(size_t num_buckets, SymbolTable** table);
 void symbol_table_free(SymbolTable* table);
 
-ZencError symbol_exists(SymbolTable* table, const char* symbol, bool* exists);
-ZencError symbol_add(SymbolTable* table, const char* symbol);
+ZencError symbol_table_exists(SymbolTable* table, const char* symbol, bool* exists);
+ZencError symbol_table_add(SymbolTable* table, const char* symbol);
 
 #endif

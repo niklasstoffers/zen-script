@@ -1,33 +1,30 @@
-#include "helpers/symbol_table.h"
+#include "collections/symbol_table.h"
+#include "helpers/assertions.h"
 #include <string.h>
 
 static size_t hash(const char* str, size_t table_size);
 
 ZencError symbol_table_new(size_t num_buckets, SymbolTable** table)
 {
-    if (!table)
-        return ZENC_ERROR_INVALID_ARG;
+    ASSERT_NOT_NULL(table);
+    ASSERT_GREATER_ZERO(num_buckets);
     
     SymbolTable* t = (SymbolTable*)malloc(sizeof(SymbolTable));
-    if (!t)
-        return ZENC_ERROR_NOMEM;
+    ASSERT_ALLOC(t);
 
     t->table_size = num_buckets;
     t->buckets = (SymbolNode**)calloc(num_buckets, sizeof(SymbolNode*));
-    if (!t->buckets) 
-    {
-        free(t);
-        return ZENC_ERROR_NOMEM;
-    }
+    ASSERT_ALLOC_FREE(t->buckets, t);
 
     *table = t;
     return ZENC_ERROR_OK;
 }
 
-ZencError symbol_exists(SymbolTable* table, const char* symbol, bool* exists)
+ZencError symbol_table_exists(SymbolTable* table, const char* symbol, bool* exists)
 {
-    if (!table || !symbol || !exists)
-        return ZENC_ERROR_INVALID_ARG;
+    ASSERT_NOT_NULL(table);
+    ASSERT_NOT_NULL(symbol);
+    ASSERT_NOT_NULL(exists);
     
     size_t h = hash(symbol, table->table_size);
     SymbolNode* node = table->buckets[h];
@@ -45,21 +42,16 @@ ZencError symbol_exists(SymbolTable* table, const char* symbol, bool* exists)
     return ZENC_ERROR_OK;
 }
 
-ZencError symbol_add(SymbolTable* table, const char* symbol)
+ZencError symbol_table_add(SymbolTable* table, const char* symbol)
 {
-    if (!table || !symbol)
-        return ZENC_ERROR_INVALID_ARG;
+    ASSERT_NOT_NULL(table);
+    ASSERT_NOT_NULL(symbol);
 
     SymbolNode* new_node = (SymbolNode*)malloc(sizeof(SymbolNode));
-    if (!new_node)
-        return ZENC_ERROR_NOMEM;
+    ASSERT_ALLOC(new_node);
 
     new_node->symbol = strdup(symbol);
-    if (!new_node->symbol) 
-    {
-        free(new_node);
-        return ZENC_ERROR_NOMEM;
-    }
+    ASSERT_ALLOC_FREE(new_node->symbol, new_node);
     
     size_t h = hash(symbol, table->table_size);
     SymbolNode* node = table->buckets[h];
@@ -87,8 +79,7 @@ ZencError symbol_add(SymbolTable* table, const char* symbol)
 
 void symbol_table_free(SymbolTable* table)
 {
-    if (!table)
-        return;
+    RETURN_IF_NULL(table);
 
     for(size_t i = 0; i < table->table_size; i++) 
     {
