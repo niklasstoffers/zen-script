@@ -17,4 +17,6 @@ typedef struct {
     size_t length;
 } Token;
 
+void token_free(Token* token);
+
 #endif

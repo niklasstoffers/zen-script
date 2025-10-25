@@ -3,21 +3,9 @@
 
 #include "lib/errors.h"
 #include "tokenizer/tokens.h"
-#include "collections/typed_list.h"
-#include "collections/typed_list_iterator.h"
+#include "tokenizer/token_list.h"
+#include "tokenizer/tokenizer_error_list.h"
 #include <stdlib.h>
-
-DECLARE_TYPED_LIST(Token, token);
-DECLARE_TYPED_ITERATOR(Token, token);
-
-typedef struct {
-    char* token;
-    int line;
-    int pos;
-} TokenizerError;
-
-DECLARE_TYPED_LIST(TokenizerError, tokenizer_error);
-DECLARE_TYPED_ITERATOR(TokenizerError, tokenizer_error);
 
 typedef struct {
     char* input;

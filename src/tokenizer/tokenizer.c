@@ -9,14 +9,6 @@ static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token);
 static TokenType get_token_type(const char* token);
 static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token);
 
-static void token_free(Token* token);
-static void tokenizer_error_free(TokenizerError* error);
-
-DEFINE_TYPED_LIST(Token, token, token_free);
-DEFINE_TYPED_LIST(TokenizerError, tokenizer_error, tokenizer_error_free);
-DEFINE_TYPED_ITERATOR(Token, token);
-DEFINE_TYPED_ITERATOR(TokenizerError, tokenizer_error);
-
 ZencError tokenizer_new(char* input, Tokenizer** tokenizer)
 {
     ASSERT_NOT_NULL(input);
@@ -167,20 +159,4 @@ static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token
     }
 
     return ZENC_ERROR_OK;
-}
-
-static void token_free(Token* token)
-{
-    RETURN_IF_NULL(token);
-
-    free(token->value);
-    free(token);
-}
-
-static void tokenizer_error_free(TokenizerError* error)
-{
-    RETURN_IF_NULL(error);
-
-    free(error->token);
-    free(error);
 }
