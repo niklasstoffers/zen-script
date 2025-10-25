@@ -55,6 +55,7 @@ bool token_is_keyword(const char* s)
 bool token_is_number(const char* s)
 {
     if (string_null_or_empty(s)) return false;
+    if (*s == '0' && s[1] != '\0') return false;
     return string_match_all(s, number_predicate);
 }
 
@@ -109,7 +110,7 @@ static const char* find_string_end(const char* s, bool* valid)
         if (!end) 
             break;
         else if (is_linebreak(*end))
-            return find_linebreak_end(end);
+            return end;
         else if (is_escape_character(*end))
             end++;
         else
