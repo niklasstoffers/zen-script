@@ -5,10 +5,13 @@
 
 bool is_space(char c);
 bool is_linebreak(char c);
+bool is_string_delimiter(char c);
+bool is_escape_character(char c);
 
 bool token_is_identifier(const char* s);
 bool token_is_keyword(const char* s);
 bool token_is_number(const char* s);
+bool token_is_string(const char* s);
 bool token_is_linebreak(const char* s);
 
 const char* find_next_token(const char* s);

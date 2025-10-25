@@ -1,4 +1,5 @@
 #include "helpers/string_helper.h"
+#include "string.h"
 #include <stdlib.h>
 
 static const char* string_first_generic(const char* s, CharPredicate predicate, bool inverse);
@@ -32,6 +33,13 @@ const char* string_first(const char* s, CharPredicate predicate)
 const char* string_first_not(const char* s, CharPredicate predicate)
 {
     return string_first_generic(s, predicate, true);
+}
+
+const char* string_end(const char* s)
+{
+    if (!s) return NULL;
+    size_t length = strlen(s);
+    return &(s[length]);
 }
 
 static const char* string_first_generic(const char* s, CharPredicate predicate, bool inverse)

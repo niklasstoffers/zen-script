@@ -20,7 +20,7 @@ ZencError symbol_table_new(size_t num_buckets, SymbolTable** table)
     return ZENC_ERROR_OK;
 }
 
-ZencError symbol_table_exists(SymbolTable* table, const char* symbol, bool* exists)
+ZencError symbol_table_exists(const SymbolTable* table, const char* symbol, bool* exists)
 {
     ASSERT_NOT_NULL(table);
     ASSERT_NOT_NULL(symbol);

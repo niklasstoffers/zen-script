@@ -32,7 +32,7 @@ ZencError linked_list_append(LinkedList* list, void* data)
     return ZENC_ERROR_OK;
 }
 
-bool linked_list_is_empty(LinkedList* list)
+bool linked_list_is_empty(const LinkedList* list)
 {
     if (!list) return true;
     return list->length == 0;

@@ -18,7 +18,7 @@ typedef struct {
 
 ZencError linked_list_new(LinkedList** list);
 ZencError linked_list_append(LinkedList* list, void* data);
-bool linked_list_is_empty(LinkedList* list);
+bool linked_list_is_empty(const LinkedList* list);
 void linked_list_free(LinkedList* list, void (*free_data)(void *));
 
 #endif

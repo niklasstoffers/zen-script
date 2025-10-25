@@ -5,20 +5,20 @@
 
 #define DECLARE_TYPED_ITERATOR(TYPE, FUNC_PREFIX) \
     typedef ListIterator TYPE##ListIterator; \
-    ZencError FUNC_PREFIX##_list_iterator_init(TYPE##ListIterator* iterator, TYPE##List* list); \
-    bool FUNC_PREFIX##_list_iterator_has_next(TYPE##ListIterator* iterator); \
-    TYPE* FUNC_PREFIX##_list_iterator_next(TYPE##ListIterator* iterator);
+    ZencError FUNC_PREFIX##_list_iterator_init(TYPE##ListIterator* iterator, const TYPE##List* list); \
+    bool FUNC_PREFIX##_list_iterator_has_next(const TYPE##ListIterator* iterator); \
+    const TYPE* FUNC_PREFIX##_list_iterator_next(TYPE##ListIterator* iterator);
 
 #define DEFINE_TYPED_ITERATOR(TYPE, FUNC_PREFIX) \
-    ZencError FUNC_PREFIX##_list_iterator_init(TYPE##ListIterator* iterator, TYPE##List* list) \
+    ZencError FUNC_PREFIX##_list_iterator_init(TYPE##ListIterator* iterator, const TYPE##List* list) \
     { \
         return list_iterator_init((ListIterator*)iterator, (LinkedList*)list); \
     } \
-    bool FUNC_PREFIX##_list_iterator_has_next(TYPE##ListIterator* iterator) \
+    bool FUNC_PREFIX##_list_iterator_has_next(const TYPE##ListIterator* iterator) \
     { \
         return list_iterator_has_next((ListIterator*)iterator); \
     } \
-    TYPE* FUNC_PREFIX##_list_iterator_next(TYPE##ListIterator* iterator) \
+    const TYPE* FUNC_PREFIX##_list_iterator_next(TYPE##ListIterator* iterator) \
     { \
         return (TYPE*)list_iterator_next((ListIterator*)iterator); \
     }

@@ -1,7 +1,7 @@
 #include "collections/list_iterator.h"
 #include "helpers/assertions.h"
 
-ZencError list_iterator_init(ListIterator* iterator, LinkedList* list)
+ZencError list_iterator_init(ListIterator* iterator, const LinkedList* list)
 {
     ASSERT_NOT_NULL(iterator);
     ASSERT_NOT_NULL(list);
@@ -10,13 +10,13 @@ ZencError list_iterator_init(ListIterator* iterator, LinkedList* list)
     return ZENC_ERROR_OK;
 }
 
-bool list_iterator_has_next(ListIterator* iterator)
+bool list_iterator_has_next(const ListIterator* iterator)
 {
     if (!iterator) return false;
     return iterator->current != NULL;
 }
 
-void* list_iterator_next(ListIterator* iterator)
+const void* list_iterator_next(ListIterator* iterator)
 {
     if (!iterator) return NULL;
     if (iterator->current)

@@ -9,7 +9,7 @@ static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token);
 static TokenType get_token_type(const char* token);
 static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token);
 
-ZencError tokenizer_new(char* input, Tokenizer** tokenizer)
+ZencError tokenizer_new(const char* input, Tokenizer** tokenizer)
 {
     ASSERT_NOT_NULL(input);
     ASSERT_NOT_NULL(tokenizer);
@@ -76,19 +76,19 @@ fail:
 }
 
 
-TokenList* tokenizer_get_token_list(Tokenizer* tokenizer)
+const TokenList* tokenizer_get_token_list(const Tokenizer* tokenizer)
 {
     if (!tokenizer) return NULL;
     return tokenizer->token_list;
 }
 
-bool tokenizer_had_error(Tokenizer* tokenizer)
+bool tokenizer_had_error(const Tokenizer* tokenizer)
 {
     if (!tokenizer) return false;
     return !tokenizer_error_list_is_empty(tokenizer->error_list);
 }
 
-TokenizerErrorList* tokenizer_get_errors(Tokenizer* tokenizer)
+const TokenizerErrorList* tokenizer_get_errors(const Tokenizer* tokenizer)
 {
     if (!tokenizer) return NULL;
     return tokenizer->error_list;
@@ -135,6 +135,7 @@ static TokenType get_token_type(const char* token)
     if (token_is_keyword(token)) return TOKEN_TYPE_KEYWORD;
     else if (token_is_identifier(token)) return TOKEN_TYPE_IDENTIFIER;
     else if (token_is_number(token)) return TOKEN_TYPE_NUMBER;
+    else if (token_is_string(token)) return TOKEN_TYPE_STRING;
     else if (token_is_linebreak(token)) return TOKEN_TYPE_LINEBREAK;
     return TOKEN_TYPE_INVALID;
 }

@@ -9,7 +9,11 @@ static bool number_predicate(char c) { return isdigit(c); }
 static bool identifier_predicate(char c) { return isalpha(c) || isdigit(c) || c == '_'; }
 static bool identifier_prefix_predicate(char c) { return isalpha(c) || c == '_'; }
 
-static bool is_space_or_linebreak(char c) { return is_space(c) || is_linebreak(c); }
+static bool is_token_delimiter(char c) { return is_space(c) || is_linebreak(c) || is_string_delimiter(c); }
+static bool is_string_delimiter_linebreak_or_escape(char c) { return is_linebreak(c) || is_string_delimiter(c) || is_escape_character(c); }
+
+static const char* find_linebreak_end(const char* s);
+static const char* find_string_end(const char* s, bool* valid);
 
 bool is_space(char c)
 {
@@ -19,6 +23,16 @@ bool is_space(char c)
 bool is_linebreak(char c)
 {
     return c == '\n' || c == '\r';
+}
+
+bool is_string_delimiter(char c)
+{
+    return c == '\"';
+}
+
+bool is_escape_character(char c)
+{
+    return c == '\\';
 }
 
 bool token_is_identifier(const char* s)
@@ -44,6 +58,15 @@ bool token_is_number(const char* s)
     return string_match_all(s, number_predicate);
 }
 
+bool token_is_string(const char* s)
+{
+    if (string_null_or_empty(s)) return false;
+    if (!is_string_delimiter(*s)) return false;
+    bool valid = false;
+    (void)find_string_end(s, &valid);
+    return valid;
+}
+
 bool token_is_linebreak(const char* s)
 {
     if (string_null_or_empty(s)) return false;
@@ -62,11 +85,39 @@ const char* find_token_end(const char* s)
     if (string_null_or_empty(s)) return NULL;
     
     if (is_linebreak(*s)) 
+        return find_linebreak_end(s);
+    else if (is_string_delimiter(*s))
+        return find_string_end(s, NULL);
+
+    return string_first(s, is_token_delimiter);
+}
+
+static const char* find_linebreak_end(const char* s)
+{
+    if (*s == '\n' || (*s == '\r' && s[1] != '\n')) 
+        return s + 1;
+    return s + 2;
+}
+
+static const char* find_string_end(const char* s, bool* valid)
+{
+    if (valid) *valid = false;
+    const char* end = s;
+    while (end)
     {
-        if (*s == '\n' || (*s == '\r' && s[1] != '\n')) 
-            return s + 1;
-        return s + 2;
+        end = string_first(end + 1, is_string_delimiter_linebreak_or_escape);
+        if (!end) 
+            break;
+        else if (is_linebreak(*end))
+            return find_linebreak_end(end);
+        else if (is_escape_character(*end))
+            end++;
+        else
+        {
+            if (valid) *valid = true;
+            return end + 1;
+        }
     }
 
-    return string_first(s, is_space_or_linebreak);
+    return string_end(s);
 }

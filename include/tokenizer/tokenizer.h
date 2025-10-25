@@ -16,12 +16,12 @@ typedef struct {
     TokenizerErrorList* error_list;
 } Tokenizer;
 
-ZencError tokenizer_new(char* input, Tokenizer** tokenizer);
+ZencError tokenizer_new(const char* input, Tokenizer** tokenizer);
 void tokenizer_free(Tokenizer* tokenizer);
 
 ZencError tokenizer_tokenize(Tokenizer* tokenizer);
-TokenList* tokenizer_get_token_list(Tokenizer* tokenizer);
-bool tokenizer_had_error(Tokenizer* tokenizer);
-TokenizerErrorList* tokenizer_get_errors(Tokenizer* tokenizer);
+const TokenList* tokenizer_get_token_list(const Tokenizer* tokenizer);
+bool tokenizer_had_error(const Tokenizer* tokenizer);
+const TokenizerErrorList* tokenizer_get_errors(const Tokenizer* tokenizer);
 
 #endif

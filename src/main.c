@@ -44,23 +44,23 @@ int main(int argc, char** argv)
 
     if (tokenizer_had_error(tokenizer))
     {
-        TokenizerErrorList* errors = tokenizer_get_errors(tokenizer);
+        const TokenizerErrorList* errors = tokenizer_get_errors(tokenizer);
         TokenizerErrorListIterator iterator;
         (void)tokenizer_error_list_iterator_init(&iterator, errors);
         while (tokenizer_error_list_iterator_has_next(&iterator))
         {
-            TokenizerError* error = tokenizer_error_list_iterator_next(&iterator);
+            const TokenizerError* error = tokenizer_error_list_iterator_next(&iterator);
             printf("Unexpected token: %s\n", error->token);
         }
     }
     else
     {
-        TokenList* tokens = tokenizer_get_token_list(tokenizer);
+        const TokenList* tokens = tokenizer_get_token_list(tokenizer);
         TokenListIterator iterator;
         (void)token_list_iterator_init(&iterator, tokens);
         while (token_list_iterator_has_next(&iterator))
         {
-            Token* token = token_list_iterator_next(&iterator);
+            const Token* token = token_list_iterator_next(&iterator);
             if (token->type == TOKEN_TYPE_LINEBREAK)
                 printf("%s\n", get_token_type_string(token->type));
             else
@@ -203,6 +203,8 @@ static char* get_token_type_string(TokenType type)
         return "IDENTIFIER";
     else if (type == TOKEN_TYPE_NUMBER)
         return "NUMBER";
+    else if (type == TOKEN_TYPE_STRING)
+        return "STRING";
     else if (type == TOKEN_TYPE_LINEBREAK)
         return "LINEBREAK";
     else if (type == TOKEN_TYPE_INVALID)

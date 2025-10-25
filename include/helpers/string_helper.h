@@ -12,5 +12,6 @@ bool string_match_all(const char* s, CharPredicate predicate);
 bool string_match_none(const char* s, CharPredicate predicate);
 const char* string_first(const char* s, CharPredicate predicate);
 const char* string_first_not(const char* s, CharPredicate predicate);
+const char* string_end(const char* s);
 
 #endif
