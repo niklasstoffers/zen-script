@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -MMD -MP -g
+TESTFLAGS = -fsanitize=address -fno-omit-frame-pointer
 LDFLAGS =
 
 SRC_DIR = src
@@ -29,11 +30,11 @@ $(SRC_BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TEST_BUILD_DIR)/$(TEST_DIR)/%: $(TEST_DIR)/%.c $(TEST_OBJS)
-	$(CC) $(CFLAGS) -Ideps $^ -o $@
+	$(CC) $(CFLAGS) $(TESTFLAGS) -Ideps $^ -o $@
 
 $(TEST_BUILD_DIR)/$(SRC_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(TESTFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET)
