@@ -151,6 +151,15 @@ MU_TEST(invalid_tokens)
     expect_token_sequence("42_", (Token[]){ make_token(TOKEN_TYPE_INVALID, "42_", 1, 1) }, 1, (TokenizerError[]) { { .token = "42_", .line = 1, .pos = 1 } }, 1);
 }
 
+MU_TEST(sequences)
+{
+    expect_token_sequence("inhale exhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_KEYWORD, "exhale", 1, 8) }, 2, NULL, 0);
+    expect_token_sequence("inhale\texhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_KEYWORD, "exhale", 1, 8) }, 2, NULL, 0);
+    expect_token_sequence("inhale\nexhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 7), make_token(TOKEN_TYPE_KEYWORD, "exhale", 2, 1) }, 3, NULL, 0);
+    expect_token_sequence("inhale\"str\"as\"str\"", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_STRING, "\"str\"", 1, 7), make_token(TOKEN_TYPE_KEYWORD, "as", 1, 12), make_token(TOKEN_TYPE_STRING, "\"str\"", 1, 14) }, 4, NULL, 0);
+    expect_token_sequence("bla\"bla\"", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "bla", 1, 1), make_token(TOKEN_TYPE_STRING, "\"bla\"", 1, 4) }, 2, NULL, 0);
+}
+
 MU_TEST_SUITE(tokenizer_tests)
 {
     MU_RUN_TEST(invalid_args);
@@ -160,6 +169,7 @@ MU_TEST_SUITE(tokenizer_tests)
     MU_RUN_TEST(strings);
     MU_RUN_TEST(spaces);
     MU_RUN_TEST(invalid_tokens);
+    MU_RUN_TEST(sequences);
 }
 
 int main()
