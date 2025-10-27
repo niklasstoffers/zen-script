@@ -146,6 +146,11 @@ static TokenType get_token_type(const char* token)
     else if (token_is_number(token)) return TOKEN_TYPE_NUMBER;
     else if (token_is_string(token)) return TOKEN_TYPE_STRING;
     else if (token_is_linebreak(token)) return TOKEN_TYPE_LINEBREAK;
+    else if (token_is_plus(token)) return TOKEN_TYPE_PLUS;
+    else if (token_is_minus(token)) return TOKEN_TYPE_MINUS;
+    else if (token_is_asterisk(token)) return TOKEN_TYPE_ASTERISK;
+    else if (token_is_slash(token)) return TOKEN_TYPE_SLASH;
+    else if (token_is_percent(token)) return TOKEN_TYPE_PERCENT;
     return TOKEN_TYPE_INVALID;
 }
 

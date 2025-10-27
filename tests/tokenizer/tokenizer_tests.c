@@ -126,6 +126,15 @@ MU_TEST(strings)
     expect_token_sequence("\"Hello\\nWorld!\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"Hello\\nWorld!\"", 1, 1) }, 1, NULL, 0);
 }
 
+MU_TEST(primitives)
+{
+    expect_token_sequence("+", (Token[]){ make_token(TOKEN_TYPE_PLUS, "+", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("-", (Token[]){ make_token(TOKEN_TYPE_MINUS, "-", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("*", (Token[]){ make_token(TOKEN_TYPE_ASTERISK, "*", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("/", (Token[]){ make_token(TOKEN_TYPE_SLASH, "/", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("%", (Token[]){ make_token(TOKEN_TYPE_PERCENT, "%", 1, 1) }, 1, NULL, 0);
+}
+
 MU_TEST(spaces)
 {
     expect_token_sequence("", (Token[]){ }, 0, NULL, 0);
@@ -142,7 +151,7 @@ MU_TEST(spaces)
 
 MU_TEST(invalid_tokens)
 {
-    expect_token_sequence("!@#$%%^&*()_+{}:|<>?~", (Token[]){ make_token(TOKEN_TYPE_INVALID, "!@#$%%^&*()_+{}:|<>?~", 1, 1) }, 1, (TokenizerError[]) { { .token = "!@#$%%^&*()_+{}:|<>?~", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("!@#$^&()_{}:|<>?~", (Token[]){ make_token(TOKEN_TYPE_INVALID, "!@#$^&()_{}:|<>?~", 1, 1) }, 1, (TokenizerError[]) { { .token = "!@#$^&()_{}:|<>?~", .line = 1, .pos = 1 } }, 1);
     expect_token_sequence("🐢💨", (Token[]){ make_token(TOKEN_TYPE_INVALID, "🐢💨", 1, 1) }, 1, (TokenizerError[]) { { .token = "🐢💨", .line = 1, .pos = 1 } }, 1);
     expect_token_sequence("\"", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"", 1, 1) }, 1, (TokenizerError[]) { { .token = "\"", .line = 1, .pos = 1 } }, 1);
     expect_token_sequence("\"\\\"", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"\\\"", 1, 1) }, 1, (TokenizerError[]) { { .token = "\"\\\"", .line = 1, .pos = 1 } }, 1);
@@ -161,6 +170,7 @@ MU_TEST(sequences)
     expect_token_sequence("inhale\nexhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 7), make_token(TOKEN_TYPE_KEYWORD, "exhale", 2, 1) }, 3, NULL, 0);
     expect_token_sequence("inhale\"str\"as\"str\"", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1), make_token(TOKEN_TYPE_STRING, "\"str\"", 1, 7), make_token(TOKEN_TYPE_KEYWORD, "as", 1, 12), make_token(TOKEN_TYPE_STRING, "\"str\"", 1, 14) }, 4, NULL, 0);
     expect_token_sequence("bla\"bla\"", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "bla", 1, 1), make_token(TOKEN_TYPE_STRING, "\"bla\"", 1, 4) }, 2, NULL, 0);
+    expect_token_sequence("+-*/%\"\"", (Token[]){ make_token(TOKEN_TYPE_PLUS, "+", 1, 1), make_token(TOKEN_TYPE_MINUS, "-", 1, 2), make_token(TOKEN_TYPE_ASTERISK, "*", 1, 3), make_token(TOKEN_TYPE_SLASH, "/", 1, 4), make_token(TOKEN_TYPE_PERCENT, "%", 1, 5), make_token(TOKEN_TYPE_STRING, "\"\"", 1, 6) }, 6, NULL, 0);
 }
 
 MU_TEST_SUITE(tokenizer_tests)
@@ -170,6 +180,7 @@ MU_TEST_SUITE(tokenizer_tests)
     MU_RUN_TEST(identifiers);
     MU_RUN_TEST(numbers);
     MU_RUN_TEST(strings);
+    MU_RUN_TEST(primitives);
     MU_RUN_TEST(spaces);
     MU_RUN_TEST(invalid_tokens);
     MU_RUN_TEST(sequences);

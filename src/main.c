@@ -248,19 +248,21 @@ int main(int argc, char** argv)
 
 static char* get_token_type_string(TokenType type)
 {
-    if (type == TOKEN_TYPE_KEYWORD)
-        return "KEYWORD";
-    else if (type == TOKEN_TYPE_IDENTIFIER)
-        return "IDENTIFIER";
-    else if (type == TOKEN_TYPE_NUMBER)
-        return "NUMBER";
-    else if (type == TOKEN_TYPE_STRING)
-        return "STRING";
-    else if (type == TOKEN_TYPE_LINEBREAK)
-        return "LINEBREAK";
-    else if (type == TOKEN_TYPE_INVALID)
-        return "INVALID";
-    return NULL;
+    switch (type)
+    {
+        case TOKEN_TYPE_KEYWORD: return "KEYWORD";
+        case TOKEN_TYPE_IDENTIFIER: return "IDENTIFIER";
+        case TOKEN_TYPE_NUMBER: return "NUMBER";
+        case TOKEN_TYPE_STRING: return "STRING";
+        case TOKEN_TYPE_LINEBREAK: return "LINEBREAK";
+        case TOKEN_TYPE_PLUS: return "PLUS";
+        case TOKEN_TYPE_MINUS: return "MINUS";
+        case TOKEN_TYPE_ASTERISK: return "ASTERISK";
+        case TOKEN_TYPE_SLASH: return "SLASH";
+        case TOKEN_TYPE_PERCENT: return "PERCENT";
+        case TOKEN_TYPE_INVALID: return "INVALID";
+        default: return NULL;
+    }
 }
 
 static char* literal_to_string(Literal* literal)
