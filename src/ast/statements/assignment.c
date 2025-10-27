@@ -27,6 +27,6 @@ void assignment_free(Assignment* assignment)
     RETURN_IF_NULL(assignment);
 
     free(assignment->variable);
-    expression_free(assignment->variable);
+    expression_free(assignment->expression);
     free(assignment);
 }

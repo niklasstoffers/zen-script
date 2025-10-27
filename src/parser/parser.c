@@ -21,6 +21,8 @@ static ZencError expect_linebreak_or_end(Parser* parser, bool* result);
 
 static ZencError parse_statement(Parser* parser, Statement** statement, bool* success);
 static ZencError parse_declaration(Parser* parser, Declaration** declaration, bool* success);
+static ZencError parse_definition(Parser* parser, Definition** definition, bool* success);
+static ZencError parse_assignment(Parser* parser, Assignment** assignment, bool* success);
 static ZencError parse_print_statement(Parser* parser, PrintStatement** print_statement, bool* success);
 static ZencError parse_expression(Parser* parser, Expression** expression, bool* success);
 static ZencError parse_literal(Parser* parser, Literal** literal, bool* success);
@@ -124,6 +126,8 @@ static ZencError parse_statement(Parser* parser, Statement** statement, bool* su
 
     StatementType statement_type;
     Declaration* declaration = NULL;
+    Definition* definition = NULL;
+    Assignment* assignment = NULL;
     PrintStatement* print_statement = NULL;
     const Token* token = token_list_iterator_peek(&parser->token_iterator);
 
@@ -137,6 +141,16 @@ static ZencError parse_statement(Parser* parser, Statement** statement, bool* su
         err = parse_print_statement(parser, &print_statement, success);
         statement_type = STATEMENT_TYPE_PRINT;
     }
+    else if (strcmp(token->value, KEYWORD_MANIFEST) == 0)
+    {
+        err = parse_definition(parser, &definition, success);
+        statement_type = STATEMENT_TYPE_DEFINITION;
+    }
+    else if (strcmp(token->value, KEYWORD_BREATH) == 0)
+    {
+        err = parse_assignment(parser, &assignment, success);
+        statement_type = STATEMENT_TYPE_ASSIGNMENT;
+    }
     else
     {
         return handle_unexpected_token_error(parser);
@@ -147,6 +161,8 @@ static ZencError parse_statement(Parser* parser, Statement** statement, bool* su
     switch (statement_type)
     {
         case STATEMENT_TYPE_DECLARATION: err = statement_declaration_new(declaration, statement); break;
+        case STATEMENT_TYPE_DEFINITION: err = statement_definition_new(definition, statement); break;
+        case STATEMENT_TYPE_ASSIGNMENT: err = statement_assignment_new(assignment, statement); break;
         case STATEMENT_TYPE_PRINT: err = statement_print_new(print_statement, statement); break;
     }
 
@@ -154,6 +170,8 @@ static ZencError parse_statement(Parser* parser, Statement** statement, bool* su
     {
         *success = false;
         declaration_free(declaration);
+        definition_free(definition);
+        assignment_free(assignment);
         print_statement_free(print_statement);
         return err;
     }
@@ -190,6 +208,73 @@ static ZencError parse_declaration(Parser* parser, Declaration** declaration, bo
 
     free(variable);
     *declaration = dec;
+    return ZENC_ERROR_OK;
+
+fail:
+    *success = false;
+    expression_free(expression);
+    free(variable);
+    return err;
+}
+
+static ZencError parse_definition(Parser* parser, Definition** definition, bool* success)
+{
+    *success = false;
+    *definition = NULL;
+
+    ZencError err;
+    char* variable = NULL;
+
+    err = expect_keyword(parser, KEYWORD_MANIFEST, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
+
+    err = parse_variable(parser, &variable, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+
+    Definition* def = NULL;
+    err = definition_new(variable, &def);
+    if (IS_ERROR(err)) goto fail;
+
+    free(variable);
+    *definition = def;
+    return ZENC_ERROR_OK;
+
+fail:
+    *success = false;
+    free(variable);
+    return err;
+}
+
+static ZencError parse_assignment(Parser* parser, Assignment** assignment, bool* success)
+{
+    *success = false;
+    *assignment = NULL;
+
+    ZencError err;
+    Expression* expression = NULL;
+    char* variable = NULL;
+
+    err = expect_keyword(parser, KEYWORD_BREATH, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
+
+    err = parse_expression(parser, &expression, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+
+    err = expect_keyword(parser, KEYWORD_INTO, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
+
+    err = parse_variable(parser, &variable, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+
+    Assignment* a = NULL;
+    err = assignment_new(variable, expression, &a);
+    if (IS_ERROR(err)) goto fail;
+
+    free(variable);
+    *assignment = a;
     return ZENC_ERROR_OK;
 
 fail:

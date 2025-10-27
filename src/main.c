@@ -109,6 +109,10 @@ int main(int argc, char** argv)
                 const Statement* statement = statement_list_iterator_next(&statement_iterator);
                 if (statement->type == STATEMENT_TYPE_DECLARATION)
                     printf("Declaration: { Variable: %s, Expression: %s }\n", statement->declaration->variable, expression_to_string(statement->declaration->expression));
+                else if (statement->type == STATEMENT_TYPE_DEFINITION)
+                    printf("Definition: { Variable: %s }\n", statement->definition->variable);
+                else if (statement->type == STATEMENT_TYPE_ASSIGNMENT)
+                    printf("Assignment: { Variable: %s, Expression: %s }\n", statement->assignment->variable, expression_to_string(statement->assignment->expression));
                 else if (statement->type == STATEMENT_TYPE_PRINT)
                     printf("Print: { Expression: %s }\n", expression_to_string(statement->print_statement->expression));
             }
