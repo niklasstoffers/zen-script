@@ -17,9 +17,11 @@ typedef struct {
     TokenType type;
     char* value;
     size_t length;
+    size_t line;
+    size_t pos;
 } Token;
 
-ZencError token_new(TokenType type, const char* value, Token** token);
+ZencError token_new(TokenType type, const char* value, size_t line, size_t pos, Token** token);
 ZencError token_copy(const Token* token, Token** copy);
 void token_free(Token* token);
 

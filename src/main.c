@@ -94,9 +94,9 @@ int main(int argc, char** argv)
             {
                 const ParserError* parser_error = parser_error_list_iterator_next(&parser_error_iterator);
                 if (parser_error->type == PARSER_ERROR_MISSING_TOKEN)
-                    printf("Missing token after %s\n", parser_error->missing_token->previous_token->value);
+                    printf("Missing token after %s %zu:%zu\n", parser_error->missing_token->previous_token->value, parser_error->missing_token->previous_token->line, parser_error->missing_token->previous_token->pos);
                 else if (parser_error->type == PARSER_ERROR_UNEXPECTED_TOKEN)
-                    printf("Parser encountered unexpected token %s\n", parser_error->unexpected_token->token->value);
+                    printf("Parser encountered unexpected token %s %zu:%zu\n", parser_error->unexpected_token->token->value, parser_error->unexpected_token->token->line, parser_error->unexpected_token->token->pos);
             }
         }
         else

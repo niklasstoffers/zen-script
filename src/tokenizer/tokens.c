@@ -2,7 +2,7 @@
 #include "helpers/assertions.h"
 #include <string.h>
 
-ZencError token_new(TokenType type, const char* value, Token** token)
+ZencError token_new(TokenType type, const char* value, size_t line, size_t pos, Token** token)
 {
     ASSERT_NOT_NULL(value);
     ASSERT_NOT_NULL(token);
@@ -16,6 +16,8 @@ ZencError token_new(TokenType type, const char* value, Token** token)
     t->type = type;
     t->value = val;
     t->length = strlen(t->value);
+    t->line = line;
+    t->pos = pos;
 
     *token = t;
     return ZENC_ERROR_OK;
@@ -26,7 +28,7 @@ ZencError token_copy(const Token* token, Token** copy)
     ASSERT_NOT_NULL(token);
     ASSERT_NOT_NULL(copy);
 
-    return token_new(token->type, token->value, copy);
+    return token_new(token->type, token->value, token->line, token->pos, copy);
 }
 
 void token_free(Token* token)

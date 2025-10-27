@@ -7,7 +7,7 @@
 
 static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token);
 static TokenType get_token_type(const char* token);
-static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token);
+static ZencError add_invalid_token_error(Tokenizer* tokenizer, const Token* token);
 
 ZencError tokenizer_new(const char* input, Tokenizer** tokenizer)
 {
@@ -27,12 +27,12 @@ ZencError tokenizer_new(const char* input, Tokenizer** tokenizer)
     err = tokenizer_error_list_new(&error_list);
     if (IS_ERROR(err)) goto fail;
 
-
     t->input = tokenizer_input;
     t->input_length = strlen(t->input);
-    t->pos = 0;
     t->token_list = token_list;
     t->error_list = error_list;
+    t->line = 1;
+    t->line_pos = 1;
     
     *tokenizer = t;
     return ZENC_ERROR_OK;
@@ -59,7 +59,7 @@ ZencError tokenizer_tokenize(Tokenizer* tokenizer)
         {
             if (token->type == TOKEN_TYPE_INVALID)
             {
-                err = add_invalid_token_error(tokenizer, token->value);
+                err = add_invalid_token_error(tokenizer, token);
                 if (IS_ERROR(err)) goto fail;
             }
 
@@ -113,15 +113,26 @@ static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
 
     char* token_end = (char*)find_token_end(next_token);
     size_t token_length = token_end - next_token;
+    size_t token_offset = next_token - tokenizer->input;
+    size_t token_line_pos = tokenizer->line_pos + (token_offset - tokenizer->pos);
     size_t new_tokenizer_pos = token_end - tokenizer->input;
     char *token_value = strndup(next_token, token_length);
     ASSERT_ALLOC(token_value);
 
     Token* t = NULL;
-    ZencError err = token_new(get_token_type(token_value), token_value, &t);
+    ZencError err = token_new(get_token_type(token_value), token_value, tokenizer->line, token_line_pos, &t);
     ASSERT_NO_ERROR_FREE(err, token_value);
     free(token_value);
 
+    if (t->type == TOKEN_TYPE_LINEBREAK)
+    {
+        tokenizer->line++;
+        tokenizer->line_pos = 1;
+    }
+    else
+    {
+        tokenizer->line_pos += new_tokenizer_pos - tokenizer->pos;
+    }
     tokenizer->pos = new_tokenizer_pos;
     
     *token = t;
@@ -138,10 +149,10 @@ static TokenType get_token_type(const char* token)
     return TOKEN_TYPE_INVALID;
 }
 
-static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token)
+static ZencError add_invalid_token_error(Tokenizer* tokenizer, const Token* token)
 {
     TokenizerError* error = NULL;
-    ZencError err = tokenizer_error_new(token, 0, 0, &error);
+    ZencError err = tokenizer_error_new(token->value, token->line, token->pos, &error);
     ASSERT_NO_ERROR(err);
 
     err = tokenizer_error_list_append(tokenizer->error_list, error);

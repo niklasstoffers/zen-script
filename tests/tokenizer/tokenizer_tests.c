@@ -24,6 +24,9 @@ static void expect_token_sequence(const char* input, Token sequence[], size_t se
         mu_check(i < sequence_length);
         mu_check(t->type == sequence[i].type);
         mu_check(strcmp(t->value, sequence[i].value) == 0);
+        mu_check(t->line == sequence[i].line);
+        mu_check(t->pos == sequence[i].pos);
+        mu_check(t->length == sequence[i].length);
         i++;
     }
     mu_check(i == sequence_length);
@@ -47,6 +50,8 @@ static void expect_token_sequence(const char* input, Token sequence[], size_t se
             mu_check(err != NULL);
             mu_check(i < num_errors);
             mu_check(strcmp(err->token, errors[i].token) == 0);
+            mu_check(err->line == errors[i].line);
+            mu_check(err->pos == errors[i].pos);
             i++;
         }
 
@@ -54,6 +59,19 @@ static void expect_token_sequence(const char* input, Token sequence[], size_t se
     }
 
     tokenizer_free(tokenizer);
+}
+
+static Token make_token(TokenType type, const char* value, size_t line, size_t pos)
+{
+    Token t = 
+    {
+        .type = type,
+        .value = (char*)value,
+        .line = line,
+        .pos = pos,
+        .length = strlen(value)
+    };
+    return t;
 }
 
 MU_TEST(invalid_args) 
@@ -71,66 +89,66 @@ MU_TEST(invalid_args)
 
 MU_TEST(keywords)
 {
-    expect_token_sequence("inhale", (Token[]){ { .type = TOKEN_TYPE_KEYWORD, .value = "inhale" } }, 1, NULL, 0);
-    expect_token_sequence("exhale", (Token[]){ { .type = TOKEN_TYPE_KEYWORD, .value = "exhale" } }, 1, NULL, 0);
-    expect_token_sequence("as", (Token[]){ { .type = TOKEN_TYPE_KEYWORD, .value = "as" } }, 1, NULL, 0);
+    expect_token_sequence("inhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("exhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "exhale", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("as", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "as", 1, 1) }, 1, NULL, 0);
 }
 
 MU_TEST(identifiers)
 {
-    expect_token_sequence("myvar", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "myvar" } }, 1, NULL, 0);
-    expect_token_sequence("inhale42", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "inhale42" } }, 1, NULL, 0);
-    expect_token_sequence("inhaleexhaleas", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "inhaleexhaleas" } }, 1, NULL, 0);
-    expect_token_sequence("_", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "_" } }, 1, NULL, 0);
-    expect_token_sequence("_my_var_123", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "_my_var_123" } }, 1, NULL, 0);
-    expect_token_sequence("_123", (Token[]){ { .type = TOKEN_TYPE_IDENTIFIER, .value = "_123" } }, 1, NULL, 0);
+    expect_token_sequence("myvar", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "myvar", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("inhale42", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "inhale42", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("inhaleexhaleas", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "inhaleexhaleas", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("_", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "_", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("_my_var_123", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "_my_var_123", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("_123", (Token[]){ make_token(TOKEN_TYPE_IDENTIFIER, "_123", 1, 1) }, 1, NULL, 0);
 }
 
 MU_TEST(numbers)
 {
-    expect_token_sequence("0", (Token[]){ { .type = TOKEN_TYPE_NUMBER, .value = "0" } }, 1, NULL, 0);
-    expect_token_sequence("1", (Token[]){ { .type = TOKEN_TYPE_NUMBER, .value = "1" } }, 1, NULL, 0);
-    expect_token_sequence("1234567890", (Token[]){ { .type = TOKEN_TYPE_NUMBER, .value = "1234567890" } }, 1, NULL, 0);
+    expect_token_sequence("0", (Token[]){ make_token(TOKEN_TYPE_NUMBER, "0", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("1", (Token[]){ make_token(TOKEN_TYPE_NUMBER, "1", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("1234567890", (Token[]){ make_token(TOKEN_TYPE_NUMBER, "1234567890", 1, 1) }, 1, NULL, 0);
 }
 
 MU_TEST(strings)
 {
-    expect_token_sequence("\"\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"Hello World!\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"Hello World!\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"1!2@3#4$5%%6^7&8*9(0)+}{:|<>?~\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"1!2@3#4$5%%6^7&8*9(0)+}{:|<>?~\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"😮💨\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"😮💨\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"\\\"\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"\\\"\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"\\\\\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"\\\\\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"\\\\\\\"\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"\\\\\\\"\"" } }, 1, NULL, 0);
-    expect_token_sequence("\"Hello\\nWorld!\"", (Token[]){ { .type = TOKEN_TYPE_STRING, .value = "\"Hello\\nWorld!\"" } }, 1, NULL, 0);
+    expect_token_sequence("\"\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"Hello World!\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"Hello World!\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"1!2@3#4$5%%6^7&8*9(0)+}{:|<>?~\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"1!2@3#4$5%%6^7&8*9(0)+}{:|<>?~\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"😮💨\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"😮💨\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"\\\"\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"\\\"\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"\\\\\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"\\\\\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"\\\\\\\"\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"\\\\\\\"\"", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\"Hello\\nWorld!\"", (Token[]){ make_token(TOKEN_TYPE_STRING, "\"Hello\\nWorld!\"", 1, 1) }, 1, NULL, 0);
 }
 
 MU_TEST(spaces)
 {
     expect_token_sequence("", (Token[]){ }, 0, NULL, 0);
     expect_token_sequence("   ", (Token[]){ }, 0, NULL, 0);
-    expect_token_sequence("     inhale       ", (Token[]){ { .type = TOKEN_TYPE_KEYWORD, .value = "inhale" } }, 1, NULL, 0);
-    expect_token_sequence("\t\tinhale\t", (Token[]){ { .type = TOKEN_TYPE_KEYWORD, .value = "inhale" } }, 1, NULL, 0);
-    expect_token_sequence("\n", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" } }, 1, NULL, 0);
-    expect_token_sequence("\r", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\r" } }, 1, NULL, 0);
-    expect_token_sequence("\r\n", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\r\n" } }, 1, NULL, 0);
-    expect_token_sequence("\n\n", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" }, { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" } }, 2, NULL, 0);
-    expect_token_sequence("\n\r", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" }, { .type = TOKEN_TYPE_LINEBREAK, .value = "\r" } }, 2, NULL, 0);
-    expect_token_sequence("\n\r\n", (Token[]){ { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" }, { .type = TOKEN_TYPE_LINEBREAK, .value = "\r\n" } }, 2, NULL, 0);
+    expect_token_sequence("     inhale       ", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 6) }, 1, NULL, 0);
+    expect_token_sequence("\t\tinhale\t", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "inhale", 1, 3) }, 1, NULL, 0);
+    expect_token_sequence("\n", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\r", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\r", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\r\n", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\r\n", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("\n\n", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\n", 2, 1) }, 2, NULL, 0);
+    expect_token_sequence("\n\r", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\r", 2, 1) }, 2, NULL, 0);
+    expect_token_sequence("\n\r\n", (Token[]){ make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\r\n", 2, 1) }, 2, NULL, 0);
 }
 
 MU_TEST(invalid_tokens)
 {
-    expect_token_sequence("!@#$%%^&*()_+{}:|<>?~", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "!@#$%%^&*()_+{}:|<>?~" } }, 1, (TokenizerError[]) { { .token = "!@#$%%^&*()_+{}:|<>?~" } }, 1);
-    expect_token_sequence("🐢💨", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "🐢💨" } }, 1, (TokenizerError[]) { { .token = "🐢💨" } }, 1);
-    expect_token_sequence("\"", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "\"" } }, 1, (TokenizerError[]) { { .token = "\"" } }, 1);
-    expect_token_sequence("\"\\\"", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "\"\\\"" } }, 1, (TokenizerError[]) { { .token = "\"\\\"" } }, 1);
-    expect_token_sequence("\"no end in sight", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "\"no end in sight" } }, 1, (TokenizerError[]) { { .token = "\"no end in sight" } }, 1);
-    expect_token_sequence("\"\n", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "\"" }, { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" } }, 2, (TokenizerError[]) { { .token = "\"" } }, 1);
-    expect_token_sequence("\"Hello \n linebreak\"", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "\"Hello " }, { .type = TOKEN_TYPE_LINEBREAK, .value = "\n" }, { .type = TOKEN_TYPE_IDENTIFIER, .value = "linebreak" }, { .type = TOKEN_TYPE_INVALID, .value = "\"" } }, 4, (TokenizerError[]) { { .token = "\"Hello " }, { .token = "\"" } }, 2);
-    expect_token_sequence("01", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "01" } }, 1, (TokenizerError[]) { { .token = "01" } }, 1);
-    expect_token_sequence("123abc", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "123abc" } }, 1, (TokenizerError[]) { { .token = "123abc" } }, 1);
-    expect_token_sequence("42_", (Token[]){ { .type = TOKEN_TYPE_INVALID, .value = "42_" } }, 1, (TokenizerError[]) { { .token = "42_" } }, 1);
+    expect_token_sequence("!@#$%%^&*()_+{}:|<>?~", (Token[]){ make_token(TOKEN_TYPE_INVALID, "!@#$%%^&*()_+{}:|<>?~", 1, 1) }, 1, (TokenizerError[]) { { .token = "!@#$%%^&*()_+{}:|<>?~", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("🐢💨", (Token[]){ make_token(TOKEN_TYPE_INVALID, "🐢💨", 1, 1) }, 1, (TokenizerError[]) { { .token = "🐢💨", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("\"", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"", 1, 1) }, 1, (TokenizerError[]) { { .token = "\"", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("\"\\\"", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"\\\"", 1, 1) }, 1, (TokenizerError[]) { { .token = "\"\\\"", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("\"no end in sight", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"no end in sight", 1, 1) }, 1, (TokenizerError[]) { { .token = "\"no end in sight", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("\"\n", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 2) }, 2, (TokenizerError[]) { { .token = "\"", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("\"Hello \n linebreak\"", (Token[]){ make_token(TOKEN_TYPE_INVALID, "\"Hello ", 1, 1), make_token(TOKEN_TYPE_LINEBREAK, "\n", 1, 8), make_token(TOKEN_TYPE_IDENTIFIER, "linebreak", 2, 2), make_token(TOKEN_TYPE_INVALID, "\"", 2, 11) }, 4, (TokenizerError[]) { { .token = "\"Hello ", .line = 1, .pos = 1 }, { .token = "\"", .line = 2, .pos = 11 } }, 2);
+    expect_token_sequence("01", (Token[]){ make_token(TOKEN_TYPE_INVALID, "01", 1, 1) }, 1, (TokenizerError[]) { { .token = "01", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("123abc", (Token[]){ make_token(TOKEN_TYPE_INVALID, "123abc", 1, 1) }, 1, (TokenizerError[]) { { .token = "123abc", .line = 1, .pos = 1 } }, 1);
+    expect_token_sequence("42_", (Token[]){ make_token(TOKEN_TYPE_INVALID, "42_", 1, 1) }, 1, (TokenizerError[]) { { .token = "42_", .line = 1, .pos = 1 } }, 1);
 }
 
 MU_TEST_SUITE(tokenizer_tests)

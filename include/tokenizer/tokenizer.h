@@ -11,6 +11,8 @@ typedef struct {
     char* input;
     size_t input_length;
     size_t pos;
+    size_t line;
+    size_t line_pos;
 
     TokenList* token_list;
     TokenizerErrorList* error_list;
