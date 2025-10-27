@@ -2,7 +2,8 @@
 #define UNARY_EXPRESSION_H
 
 #include "lib/errors.h"
-#include "ast/expressions/expression.h"
+
+typedef struct Expression Expression;
 
 typedef enum {
     UNARY_EXPRESSION_TYPE_NEGATION

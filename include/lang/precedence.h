@@ -1,0 +1,11 @@
+#ifndef PRECEDENCE_H
+#define PRECEDENCE_H
+
+typedef enum {
+    PRECEDENCE_LOWEST = 0,
+    PRECEDENCE_ADDITIVE = 1,
+    PRECEDENCE_MULTIPLICATIVE = 2,
+    PRECEDENCE_UNARY = 3
+} Precedence;
+
+#endif

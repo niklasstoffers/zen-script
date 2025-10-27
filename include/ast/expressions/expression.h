@@ -13,7 +13,7 @@ typedef enum {
     EXPRESSION_TYPE_BINARY
 } ExpressionType;
 
-typedef struct {
+typedef struct Expression {
     ExpressionType type;
     union {
         Literal* literal;

@@ -2,7 +2,8 @@
 #define BINARY_EXPRESSION_H
 
 #include "lib/errors.h"
-#include "ast/expressions/expression.h"
+
+typedef struct Expression Expression;
 
 typedef enum {
     BINARY_EXPRESSION_TYPE_ADDITION,

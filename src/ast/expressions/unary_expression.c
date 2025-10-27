@@ -1,4 +1,5 @@
 #include "ast/expressions/unary_expression.h"
+#include "ast/expressions/expression.h"
 #include "helpers/assertions.h"
 #include <stdlib.h>
 

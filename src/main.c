@@ -11,6 +11,8 @@
 static char* get_token_type_string(TokenType type);
 static char* expression_to_string(Expression* expression);
 static char* literal_to_string(Literal* literal);
+static char* unary_expression_type_str(UnaryExpressionType type);
+static char* binary_expression_type_str(BinaryExpressionType type);
 // static void print_tac_instruction(TACInstruction* instruction);
 // static char* expression_to_string(Expression* expression);
 
@@ -281,6 +283,28 @@ static char* literal_to_string(Literal* literal)
     return str;
 }
 
+static char* unary_expression_type_str(UnaryExpressionType type)
+{
+    switch (type)
+    {
+        case UNARY_EXPRESSION_TYPE_NEGATION: return "NEGATION";
+        default: return NULL;
+    }
+}
+
+static char* binary_expression_type_str(BinaryExpressionType type)
+{
+    switch (type)
+    {
+        case BINARY_EXPRESSION_TYPE_ADDITION: return "ADDITION";
+        case BINARY_EXPRESSION_TYPE_SUBTRACTION: return "SUBTRACTION";
+        case BINARY_EXPRESSION_TYPE_MULTIPLICATION: return "MULTIPLICATION";
+        case BINARY_EXPRESSION_TYPE_DIVISION: return "DIVISION";
+        case BINARY_EXPRESSION_TYPE_MODULO: return "MODULO";
+        default: return NULL;
+    }
+}
+
 static char* expression_to_string(Expression* expression)
 {
     if (expression->type == EXPRESSION_TYPE_LITERAL)
@@ -295,6 +319,20 @@ static char* expression_to_string(Expression* expression)
         size_t len = snprintf(NULL, 0, "{ Variable: %s }", expression->variable);
         char* str = (char*)malloc(len + 1);
         snprintf(str, len + 1, "{ Variable: %s }", expression->variable);
+        return str;
+    }
+    else if (expression->type == EXPRESSION_TYPE_UNARY)
+    {
+        size_t len = snprintf(NULL, 0, "{ Unary: { Type: %s, Expression: %s } }", unary_expression_type_str(expression->unary_expression->type), expression_to_string(expression->unary_expression->expression));
+        char* str = (char*)malloc(len + 1);
+        snprintf(str, len + 1, "{ Unary: { Type: %s, Expression: %s } }", unary_expression_type_str(expression->unary_expression->type), expression_to_string(expression->unary_expression->expression));
+        return str;
+    }
+    else if (expression->type == EXPRESSION_TYPE_BINARY)
+    {
+        size_t len = snprintf(NULL, 0, "{ Binary: { Type: %s, Left: %s, Right: %s } }", binary_expression_type_str(expression->binary_expression->type), expression_to_string(expression->binary_expression->left), expression_to_string(expression->binary_expression->right));
+        char* str = (char*)malloc(len + 1);
+        snprintf(str, len + 1, "{ Binary: { Type: %s, Left: %s, Right: %s } }", binary_expression_type_str(expression->binary_expression->type), expression_to_string(expression->binary_expression->left), expression_to_string(expression->binary_expression->right));
         return str;
     }
 

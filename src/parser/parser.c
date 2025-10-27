@@ -1,5 +1,6 @@
 #include "parser/parser.h"
 #include "lang/keywords.h"
+#include "lang/precedence.h"
 #include "helpers/assertions.h"
 #include <stdlib.h>
 #include <string.h>
@@ -24,9 +25,16 @@ static ZencError parse_declaration(Parser* parser, Declaration** declaration, bo
 static ZencError parse_definition(Parser* parser, Definition** definition, bool* success);
 static ZencError parse_assignment(Parser* parser, Assignment** assignment, bool* success);
 static ZencError parse_print_statement(Parser* parser, PrintStatement** print_statement, bool* success);
-static ZencError parse_expression(Parser* parser, Expression** expression, bool* success);
+static ZencError parse_expression(Parser* parser, Precedence precedence, Expression** expression, bool* success);
+static ZencError parse_primary_expression(Parser* parser, Expression** expression, bool* success);
 static ZencError parse_literal(Parser* parser, Literal** literal, bool* success);
 static ZencError parse_variable(Parser* parser, char** variable, bool* success);
+
+static bool is_unary_operator(const Token* token);
+static bool is_binary_operator(const Token* token);
+static UnaryExpressionType get_unary_expression_type(const Token* token);
+static BinaryExpressionType get_binary_expression_type(const Token* token);
+static Precedence get_binary_operator_precedence(BinaryExpressionType type);
 
 static ZencError handle_unexpected_token_error(Parser* parser);
 static ZencError handle_missing_token_error(Parser* parser);
@@ -192,7 +200,7 @@ static ZencError parse_declaration(Parser* parser, Declaration** declaration, bo
     if (IS_ERROR(err) || !*success) goto fail;
     (void)advance(parser);
     
-    err = parse_expression(parser, &expression, success);
+    err = parse_expression(parser, PRECEDENCE_LOWEST, &expression, success);
     if (IS_ERROR(err) || !*success) goto fail;
     
     err = expect_keyword(parser, KEYWORD_AS, success);
@@ -259,7 +267,7 @@ static ZencError parse_assignment(Parser* parser, Assignment** assignment, bool*
     if (IS_ERROR(err) || !*success) goto fail;
     (void)advance(parser);
 
-    err = parse_expression(parser, &expression, success);
+    err = parse_expression(parser, PRECEDENCE_LOWEST, &expression, success);
     if (IS_ERROR(err) || !*success) goto fail;
 
     err = expect_keyword(parser, KEYWORD_INTO, success);
@@ -296,7 +304,7 @@ static ZencError parse_print_statement(Parser* parser, PrintStatement** print_st
     if (IS_ERROR(err) || !*success) goto fail;
     (void)advance(parser);
 
-    err = parse_expression(parser, &expression, success);
+    err = parse_expression(parser, PRECEDENCE_LOWEST, &expression, success);
     if (IS_ERROR(err) || !*success) goto fail;
 
     PrintStatement* statement = NULL;
@@ -312,7 +320,72 @@ fail:
     return err;
 }
 
-static ZencError parse_expression(Parser* parser, Expression** expression, bool* success)
+static ZencError parse_expression(Parser* parser, Precedence precedence, Expression** expression, bool* success)
+{
+    *success = false;
+    *expression = NULL;
+
+    ZencError err;
+    Expression* left = NULL;
+    Expression* right = NULL;
+    UnaryExpression* unary_expression = NULL;
+    BinaryExpression* binary_expression = NULL;
+
+    err = expect_next_token(parser, success);
+    if (IS_ERROR(err) || !*success) return err;
+
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    if (is_unary_operator(token))
+    {
+        UnaryExpressionType type = get_unary_expression_type(token);
+        advance(parser);
+
+        err = parse_expression(parser, PRECEDENCE_UNARY, &right, success);
+        if (IS_ERROR(err) || !*success) goto fail;
+        err = unary_expression_new(type, right, &unary_expression);
+        if (IS_ERROR(err)) goto fail;
+        
+        unary_expression->expression = right;
+        unary_expression->type = type;
+        err = expression_unary_new(unary_expression, &left);
+        if (IS_ERROR(err)) goto fail;
+    }
+    else
+    {
+        err = parse_primary_expression(parser, &left, success);
+        if (IS_ERROR(err) || !*success) goto fail;
+    }
+
+    while(token_list_iterator_has_next(&parser->token_iterator))
+    {
+        token = token_list_iterator_peek(&parser->token_iterator);
+        if (!is_binary_operator(token)) break;
+        BinaryExpressionType type = get_binary_expression_type(token);
+        Precedence operator_precedence = get_binary_operator_precedence(type);
+        if (operator_precedence < precedence) break;
+        advance(parser);
+
+        err = parse_expression(parser, operator_precedence + 1, &right, success);
+        if (IS_ERROR(err) || !*success) goto fail;
+        err = binary_expression_new(type, left, right, &binary_expression);
+        if (IS_ERROR(err)) goto fail;
+        err = expression_binary_new(binary_expression, &left);
+        if (IS_ERROR(err)) goto fail;
+    }
+
+    *expression = left;
+    return ZENC_ERROR_OK;
+
+fail:
+    *success = false;
+    expression_free(left);
+    expression_free(right);
+    unary_expression_free(unary_expression);
+    binary_expression_free(binary_expression);
+    return err;
+}
+
+static ZencError parse_primary_expression(Parser* parser, Expression** expression, bool* success)
 {
     *success = false;
     *expression = NULL;
@@ -349,6 +422,7 @@ static ZencError parse_expression(Parser* parser, Expression** expression, bool*
     {
         case EXPRESSION_TYPE_VARIABLE: err = expression_variable_new(variable, expression); break;
         case EXPRESSION_TYPE_LITERAL: err = expression_literal_new(literal, expression); break;
+        default: err = ZENC_ERROR_INTERNAL;
     }
 
     if (IS_ERROR(err))
@@ -477,6 +551,57 @@ static ZencError expect_linebreak_or_end(Parser* parser, bool* result)
     }
 
     return expect_token_type(parser, TOKEN_TYPE_LINEBREAK, result);
+}
+
+static bool is_unary_operator(const Token* token)
+{
+    return token->type == TOKEN_TYPE_MINUS;
+}
+
+static bool is_binary_operator(const Token* token)
+{
+    return token->type == TOKEN_TYPE_PLUS
+        || token->type == TOKEN_TYPE_MINUS
+        || token->type == TOKEN_TYPE_ASTERISK
+        || token->type == TOKEN_TYPE_SLASH
+        || token->type == TOKEN_TYPE_PERCENT;
+}
+
+static UnaryExpressionType get_unary_expression_type(const Token* token)
+{
+    switch (token->type)
+    {
+        case TOKEN_TYPE_MINUS: return UNARY_EXPRESSION_TYPE_NEGATION;
+        default: return 0;
+    }
+}
+
+static BinaryExpressionType get_binary_expression_type(const Token* token)
+{
+    switch (token->type)
+    {
+        case TOKEN_TYPE_PLUS: return BINARY_EXPRESSION_TYPE_ADDITION;
+        case TOKEN_TYPE_MINUS: return BINARY_EXPRESSION_TYPE_SUBTRACTION;
+        case TOKEN_TYPE_ASTERISK: return BINARY_EXPRESSION_TYPE_MULTIPLICATION;
+        case TOKEN_TYPE_SLASH: return BINARY_EXPRESSION_TYPE_DIVISION;
+        case TOKEN_TYPE_PERCENT: return BINARY_EXPRESSION_TYPE_MODULO;
+        default: return 0;
+    }
+}
+
+static Precedence get_binary_operator_precedence(BinaryExpressionType type)
+{
+    switch(type)
+    {
+        case BINARY_EXPRESSION_TYPE_ADDITION:
+        case BINARY_EXPRESSION_TYPE_SUBTRACTION:
+            return PRECEDENCE_ADDITIVE;
+        case BINARY_EXPRESSION_TYPE_MULTIPLICATION:
+        case BINARY_EXPRESSION_TYPE_DIVISION:
+        case BINARY_EXPRESSION_TYPE_MODULO:
+            return PRECEDENCE_MULTIPLICATIVE;
+        default: return 0;
+    }
 }
 
 static ZencError handle_unexpected_token_error(Parser* parser)
