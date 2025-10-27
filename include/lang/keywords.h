@@ -5,7 +5,7 @@
 #define KEYWORD_EXHALE "exhale"
 #define KEYWORD_AS "as"
 #define KEYWORD_MANIFEST "manifest"
-#define KEYWORD_BREATH "breath"
+#define KEYWORD_BREATH "breathe"
 #define KEYWORD_INTO "into"
 
 extern const char* keywords[];

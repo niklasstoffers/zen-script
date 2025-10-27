@@ -93,7 +93,7 @@ MU_TEST(keywords)
     expect_token_sequence("exhale", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "exhale", 1, 1) }, 1, NULL, 0);
     expect_token_sequence("as", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "as", 1, 1) }, 1, NULL, 0);
     expect_token_sequence("manifest", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "manifest", 1, 1) }, 1, NULL, 0);
-    expect_token_sequence("breath", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "breath", 1, 1) }, 1, NULL, 0);
+    expect_token_sequence("breathe", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "breath", 1, 1) }, 1, NULL, 0);
     expect_token_sequence("into", (Token[]){ make_token(TOKEN_TYPE_KEYWORD, "into", 1, 1) }, 1, NULL, 0);
 }
 
