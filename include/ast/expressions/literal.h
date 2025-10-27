@@ -16,4 +16,4 @@ typedef struct {
 ZencError literal_new(LiteralType type, const char* value, Literal** literal);
 void literal_free(Literal* literal);
 
-#endif LITERAL_H
+#endif

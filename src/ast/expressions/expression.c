@@ -42,8 +42,8 @@ void expression_free(Expression* expression)
 
     switch (expression->type)
     {
-        EXPRESSION_TYPE_LITERAL: literal_free(expression->literal); break;
-        EXPRESSION_TYPE_VARIABLE: free(expression->variable); break;
+        case EXPRESSION_TYPE_LITERAL: literal_free(expression->literal); break;
+        case EXPRESSION_TYPE_VARIABLE: free(expression->variable); break;
     }
 
     free(expression);

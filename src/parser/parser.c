@@ -1,253 +1,428 @@
-// #include "parser/parser.h"
-// #include "lang/keywords.h"
-// #include "helpers/conversion_helper.h"
-// #include <stdlib.h>
-// #include <stdbool.h>
-// #include <string.h>
+#include "parser/parser.h"
+#include "lang/keywords.h"
+#include "helpers/assertions.h"
+#include <stdlib.h>
+#include <string.h>
 
-// static ZencError parse_statement(TokenNode** tokens, Statement** statement, ParserError* error);
-// static ZencError parse_declaration(TokenNode** tokens, Declaration** declaration, ParserError* error);
-// static ZencError parse_print_statement(TokenNode** tokens, PrintStatement** print_statement, ParserError* error);
-// static ZencError parse_expression(TokenNode** tokens, Expression** expression, ParserError* error);
+typedef bool (*TokenPredicate)(const Token*);
 
-// static bool expect_token(TokenNode* node, TokenType type, const char* value);
-// static bool expect_linebreak_or_end(TokenNode** tokens);
-// static void advance_linebreaks(TokenNode** tokens);
+static bool token_predicate_is_linebreak(const Token* token) { return token->type == TOKEN_TYPE_LINEBREAK; }
+static bool token_predicate_is_no_linebreak(const Token* token) { return !token_predicate_is_linebreak(token); }
 
-// ZencError parse_program(TokenStream* tokens, Program** program, ParserError* error)
-// {
-//     if (!tokens || !program || !error)
-//         return ZENC_ERROR_INVALID_ARG;
+static void advance_linebreaks(Parser* parser);
+static void advance_until_linebreak(Parser* parser);
+static void advance_until_match(Parser* parser, TokenPredicate predicate);
+static const Token* advance(Parser* parser);
 
-//     *error = PARSER_ERROR_OK;
-//     Program* program_node = (Program*)malloc(sizeof(Program));
-//     if (!program_node)
-//         return ZENC_ERROR_NOMEM;
+static ZencError expect_next_token(Parser* parser, bool* result);
+static ZencError expect_token_type(Parser* parser, TokenType type, bool* result);
+static ZencError expect_keyword(Parser* parser, const char* keword, bool* result);
+static ZencError expect_linebreak_or_end(Parser* parser, bool* result);
 
-//     program_node->head = NULL;
-//     StatementNode* current_statement = NULL;
-//     TokenNode* current_token = tokens->head;
-//     while(current_token)
-//     {
-//         Statement* statement = NULL;
-//         ZencError err = parse_statement(&current_token, &statement, error);
-//         if (err != ZENC_ERROR_OK || *error != PARSER_ERROR_OK)
-//         {
-//             free_program(program_node);
-//             return err;
-//         }
+static ZencError parse_statement(Parser* parser, Statement** statement, bool* success);
+static ZencError parse_declaration(Parser* parser, Declaration** declaration, bool* success);
+static ZencError parse_print_statement(Parser* parser, PrintStatement** print_statement, bool* success);
+static ZencError parse_expression(Parser* parser, Expression** expression, bool* success);
+static ZencError parse_literal(Parser* parser, Literal** literal, bool* success);
+static ZencError parse_variable(Parser* parser, char** variable, bool* success);
 
-//         StatementNode* next_statement = (StatementNode*)malloc(sizeof(StatementNode));
-//         if (!next_statement)
-//         {
-//             free_statement(statement);
-//             free_program(program_node);
-//             return ZENC_ERROR_NOMEM;
-//         }
+static ZencError handle_unexpected_token_error(Parser* parser);
+static ZencError handle_missing_token_error(Parser* parser);
+static ZencError handle_error(Parser* parser, ParserError* error);
 
-//         next_statement->statement = statement;
-//         if (!current_statement)
-//             program_node->head = next_statement;
-//         else
-//             current_statement->next = next_statement;
-//         current_statement = next_statement;
+ZencError parser_new(const TokenList* tokens, Parser** parser)
+{
+    ASSERT_NOT_NULL(tokens);
+    ASSERT_NOT_NULL(parser);
 
-//         if (!expect_linebreak_or_end(&current_token))
-//         {
-//             free_program(program_node);
-//             *error = PARSER_ERROR_INVALID;
-//             return ZENC_ERROR_OK;
-//         }
+    Parser* p = (Parser*)calloc(1, sizeof(Parser));
+    ASSERT_ALLOC(p);
 
-//         advance_linebreaks(&current_token);
-//     }
+    ZencError err = token_list_iterator_init(&p->token_iterator, tokens);
+    ASSERT_NO_ERROR_FREE(err, p);
 
-//     *program = program_node;
-//     return ZENC_ERROR_OK;
-// }
+    err = statement_list_new(&p->statements);
+    ASSERT_NO_ERROR_FREE(err, p);
 
-// static ZencError parse_statement(TokenNode** tokens, Statement** statement, ParserError* error)
-// {
-//     TokenNode* current = *tokens;
-//     if (current->token->type != TOKEN_TYPE_KEYWORD)
-//     {
-//         *error = PARSER_ERROR_INVALID;
-//         return ZENC_ERROR_OK;
-//     }
+    err = parser_error_list_new(&p->errors);
+    if (IS_ERROR(err))
+    {
+        statement_list_free(p->statements);
+        free(p);
+        return err;
+    }
 
-//     Statement* statement_node = (Statement*)malloc(sizeof(Statement));
-//     if (!statement)
-//         return ZENC_ERROR_NOMEM;
+    *parser = p;
+    return ZENC_ERROR_OK;
+}
 
-//     ZencError err = ZENC_ERROR_OK;
-//     if (strcmp(current->token->value, KEYWORD_INHALE) == 0)
-//     {
-//         current = current->next;
-//         Declaration* declaration = NULL;
-//         err = parse_declaration(&current, &declaration, error);
-//         statement_node->type = STATEMENT_TYPE_DECLARATION;
-//         statement_node->declaration = declaration;
-//     }
-//     else if (strcmp(current->token->value, KEYWORD_EXHALE) == 0)
-//     {
-//         current = current->next;
-//         PrintStatement* print_statement = NULL;
-//         err = parse_print_statement(&current, &print_statement, error);
-//         statement_node->type = STATEMENT_TYPE_PRINT;
-//         statement_node->print_statement = print_statement;
-//     }
+ZencError parser_parse(Parser* parser)
+{
+    ASSERT_NOT_NULL(parser);
 
-//     if (err != ZENC_ERROR_OK || *error != PARSER_ERROR_OK)
-//     {
-//         free_statement(statement_node);
-//         return err;
-//     }
+    while(token_list_iterator_has_next(&parser->token_iterator))
+    {
+        advance_linebreaks(parser);
+        if (!token_list_iterator_has_next(&parser->token_iterator))
+            break;
+        
+        bool success = false;
+        Statement* statement = NULL;
+        ZencError err = parse_statement(parser, &statement, &success);
+        ASSERT_NO_ERROR(err);
 
-//     *statement = statement_node;
-//     *tokens = current;
-//     return ZENC_ERROR_OK;
-// }
+        if (success)
+        {
+            err = statement_list_append(parser->statements, statement);
+            if (IS_ERROR(err))
+            {
+                statement_free(statement);
+                return err;
+            }
+        }
 
-// static ZencError parse_declaration(TokenNode** tokens, Declaration** declaration, ParserError* error) 
-// {
-//     TokenNode* current = *tokens;
-//     if (!current)
-//     {
-//         *error = PARSER_ERROR_INVALID;
-//         return ZENC_ERROR_OK;
-//     }
+        err = expect_linebreak_or_end(parser, &success);
+        ASSERT_NO_ERROR(err);
+    }
+
+    return ZENC_ERROR_OK;
+}
+
+const StatementList* parser_get_statements(const Parser* parser)
+{
+    if (!parser) return NULL;
+    return parser->statements;
+}
+
+bool parser_had_error(const Parser* parser)
+{
+    if (!parser) return false;
+    return !parser_error_list_is_empty(parser->errors);
+}
+
+const ParserErrorList* parser_get_errors(const Parser* parser)
+{
+    if (!parser) return NULL;
+    return parser->errors;
+}
+
+void parser_free(Parser* parser)
+{
+    RETURN_IF_NULL(parser);
+
+    statement_list_free(parser->statements);
+    free(parser);
+}
+
+static ZencError parse_statement(Parser* parser, Statement** statement, bool* success)
+{
+    *success = false;
+    *statement = NULL;
+
+    ZencError err = expect_token_type(parser, TOKEN_TYPE_KEYWORD, success);
+    if (IS_ERROR(err) || !*success) return err;
+
+    StatementType statement_type;
+    Declaration* declaration = NULL;
+    PrintStatement* print_statement = NULL;
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+
+    if (strcmp(token->value, KEYWORD_INHALE) == 0)
+    {
+        err = parse_declaration(parser, &declaration, success);
+        statement_type = STATEMENT_TYPE_DECLARATION;
+    }
+    else if (strcmp(token->value, KEYWORD_EXHALE) == 0)
+    {
+        err = parse_print_statement(parser, &print_statement, success);
+        statement_type = STATEMENT_TYPE_PRINT;
+    }
+    else
+    {
+        return handle_unexpected_token_error(parser);
+    }
+
+    if (IS_ERROR(err) || !*success) return err;
     
-//     Expression* expression = NULL;
-//     ZencError err = parse_expression(&current, &expression, error);
-//     if (err != ZENC_ERROR_OK || *error != PARSER_ERROR_OK)
-//         return err;
+    switch (statement_type)
+    {
+        case STATEMENT_TYPE_DECLARATION: err = statement_declaration_new(declaration, statement); break;
+        case STATEMENT_TYPE_PRINT: err = statement_print_new(print_statement, statement); break;
+    }
 
-//     if (!expect_token(current, TOKEN_TYPE_KEYWORD, KEYWORD_AS))
-//         goto fail;
+    if (IS_ERROR(err))
+    {
+        *success = false;
+        declaration_free(declaration);
+        print_statement_free(print_statement);
+        return err;
+    }
 
-//     current = current->next;
-//     if (!expect_token(current, TOKEN_TYPE_IDENTIFIER, NULL))
-//         goto fail;
+    return ZENC_ERROR_OK;
+}
 
-//     char* identifier = strdup(current->token->value);
-//     Declaration* declaration_node = (Declaration*)malloc(sizeof(Declaration));
-//     if (!identifier || !declaration_node)
-//     {
-//         free(identifier);
-//         free(declaration_node);
-//         free_expression(expression);
-//         return ZENC_ERROR_NOMEM;
-//     }
+static ZencError parse_declaration(Parser* parser, Declaration** declaration, bool* success)
+{
+    *success = false;
+    *declaration = NULL;
 
-//     current = current->next;
-//     declaration_node->expression = expression;
-//     declaration_node->identifier = identifier;
-//     *declaration = declaration_node;
-//     *tokens = current;
+    ZencError err;
+    Expression* expression = NULL;
+    char* variable = NULL;
 
-//     return ZENC_ERROR_OK;
+    err = expect_keyword(parser, KEYWORD_INHALE, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
+    
+    err = parse_expression(parser, &expression, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    
+    err = expect_keyword(parser, KEYWORD_AS, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
+    
+    err = parse_variable(parser, &variable, success);
+    if (IS_ERROR(err) || !*success) goto fail;
 
-// fail:
-//     free_expression(expression);
-//     *error = PARSER_ERROR_INVALID;
-//     return ZENC_ERROR_OK;
-// }
+    Declaration* dec = NULL;
+    err = declaration_new(variable, expression, &dec);
+    if (IS_ERROR(err)) goto fail;
 
-// static ZencError parse_print_statement(TokenNode** tokens, PrintStatement** print_statement, ParserError* error)
-// {
-//     TokenNode* current = *tokens;
-//     if (!current)
-//     {
-//         *error = PARSER_ERROR_INVALID;
-//         return ZENC_ERROR_OK;
-//     }
+    free(variable);
+    *declaration = dec;
+    return ZENC_ERROR_OK;
 
-//     Expression* expression = NULL;
-//     ZencError err = parse_expression(&current, &expression, error);
-//     if (err != ZENC_ERROR_OK || *error != PARSER_ERROR_OK)
-//         return err;
+fail:
+    *success = false;
+    expression_free(expression);
+    free(variable);
+    return err;
+}
 
-//     PrintStatement* print_statement_node = (PrintStatement*)malloc(sizeof(PrintStatement));
-//     if (!print_statement_node)
-//     {
-//         free_expression(expression);
-//         return ZENC_ERROR_NOMEM;
-//     }
+static ZencError parse_print_statement(Parser* parser, PrintStatement** print_statement, bool* success)
+{
+    *success = false;
+    *print_statement = NULL;
 
-//     print_statement_node->expression = expression;
-//     *print_statement = print_statement_node;
-//     *tokens = current;
+    ZencError err;
+    Expression* expression = NULL;
 
-//     return ZENC_ERROR_OK;
-// }
+    err = expect_keyword(parser, KEYWORD_EXHALE, success);
+    if (IS_ERROR(err) || !*success) goto fail;
+    (void)advance(parser);
 
-// static ZencError parse_expression(TokenNode** tokens, Expression** expression, ParserError* error)
-// {
-//     TokenNode* current = *tokens;
-//     Expression* expression_node = (Expression*)malloc(sizeof(Expression));
-//     if (!expression_node)
-//         return ZENC_ERROR_NOMEM;
+    err = parse_expression(parser, &expression, success);
+    if (IS_ERROR(err) || !*success) goto fail;
 
-//     if (expect_token(current, TOKEN_TYPE_NUMBER, NULL))
-//     {
-//         int literal_value;
-//         if (!string_to_int(current->token->value, &literal_value))
-//         {
-//             free(expression_node);
-//             *error = PARSER_ERROR_INVALID;
-//             return ZENC_ERROR_OK;
-//         }
+    PrintStatement* statement = NULL;
+    err = print_statement_new(expression, &statement);
+    if (IS_ERROR(err)) goto fail;
 
-//         expression_node->type = EXPRESSION_TYPE_NUMBER;
-//         expression_node->number = literal_value;
-//     }
-//     else if (expect_token(current, TOKEN_TYPE_IDENTIFIER, NULL))
-//     {
-//         char* identifier = strdup(current->token->value);
-//         if (!identifier)
-//         {
-//             free(expression_node);
-//             return ZENC_ERROR_NOMEM;
-//         }
+    *print_statement = statement;
+    return ZENC_ERROR_OK;
 
-//         expression_node->type = EXPRESSION_TYPE_IDENTIFIER;
-//         expression_node->identifier = identifier;
-//     }
-//     else
-//     {
-//         *error = PARSER_ERROR_INVALID;
-//         return ZENC_ERROR_OK;
-//     }
+fail:
+    *success = false;
+    expression_free(expression);
+    return err;
+}
 
-//     current = current->next;
-//     *tokens = current;
-//     *expression = expression_node;
+static ZencError parse_expression(Parser* parser, Expression** expression, bool* success)
+{
+    *success = false;
+    *expression = NULL;
 
-//     return ZENC_ERROR_OK;
-// }
+    ZencError err;
+    ExpressionType type;
+    Literal* literal = NULL;
+    char* variable = NULL;
 
-// static bool expect_token(TokenNode* node, TokenType type, const char* value)
-// {
-//     if (!node) return false;
-//     if (node->token->type != type || (value && strcmp(node->token->value, value) != 0)) return false;
-//     return true;
-// }
+    err = expect_next_token(parser, success);
+    if (IS_ERROR(err) || !*success) return err;
 
-// static bool expect_linebreak_or_end(TokenNode** tokens)
-// {
-//     if (!*tokens)
-//         return true;
-//     return (*tokens)->token->type == TOKEN_TYPE_LINEBREAK;
-// }
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    switch (token->type)
+    {
+        case TOKEN_TYPE_IDENTIFIER:
+            type = EXPRESSION_TYPE_VARIABLE;
+            err = parse_variable(parser, &variable, success);
+            break;
+        case TOKEN_TYPE_NUMBER:
+        case TOKEN_TYPE_STRING:
+            type = EXPRESSION_TYPE_LITERAL;
+            err = parse_literal(parser, &literal, success);
+            break;
+        default:
+            *success = false;
+            err = handle_unexpected_token_error(parser);
+            break;
+    }
 
-// static void advance_linebreaks(TokenNode** tokens)
-// {
-//     TokenNode* current = *tokens;
-//     while (current)
-//     {
-//         if (current->token->type != TOKEN_TYPE_LINEBREAK)
-//             break;
-//         current = current->next;
-//     }
-//     *tokens = current;
-// }
+    if (IS_ERROR(err) || !*success) return err;
+    
+    switch (type)
+    {
+        case EXPRESSION_TYPE_VARIABLE: err = expression_variable_new(variable, expression); break;
+        case EXPRESSION_TYPE_LITERAL: err = expression_literal_new(literal, expression); break;
+    }
+
+    if (IS_ERROR(err))
+    {
+        *success = false;
+        literal_free(literal);
+        free(variable);
+        return err;
+    }
+
+    free(variable);
+    return ZENC_ERROR_OK;
+}
+
+static ZencError parse_literal(Parser* parser, Literal** literal, bool* success)
+{
+    *success = false;
+    *literal = NULL;
+
+    ZencError err = expect_next_token(parser, success);
+    if (IS_ERROR(err) || !*success) return err;
+
+    LiteralType type;
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    switch (token->type)
+    {
+        case TOKEN_TYPE_NUMBER: type = LITERAL_TYPE_NUMBER; break;
+        case TOKEN_TYPE_STRING: type = LITERAL_TYPE_STRING; break;
+        default:
+            *success = false;
+            return handle_unexpected_token_error(parser);
+    }
+
+    (void)advance(parser);
+    err = literal_new(type, token->value, literal);
+    if (IS_ERROR(err)) return err;
+
+    return ZENC_ERROR_OK;
+}
+
+static ZencError parse_variable(Parser* parser, char** variable, bool* success)
+{
+    *success = false;
+    *variable = NULL;
+
+    ZencError err = expect_token_type(parser, TOKEN_TYPE_IDENTIFIER, success);
+    if (IS_ERROR(err) || !*success) return err;
+
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    char* var = strdup(token->value);
+    ASSERT_ALLOC(var);
+
+    (void)advance(parser);
+
+    *variable = var;
+    *success = true;
+    return ZENC_ERROR_OK;
+}
+
+static void advance_linebreaks(Parser* parser)
+{
+    advance_until_match(parser, token_predicate_is_no_linebreak);
+}
+
+static void advance_until_linebreak(Parser* parser)
+{
+    advance_until_match(parser, token_predicate_is_linebreak);
+}
+
+static void advance_until_match(Parser* parser, TokenPredicate predicate)
+{
+    while(token_list_iterator_has_next(&parser->token_iterator))
+    {
+        const Token* token = token_list_iterator_peek(&parser->token_iterator);
+        if (predicate(token))
+            break;
+        
+        (void)advance(parser);
+    }
+}
+
+static const Token* advance(Parser* parser)
+{
+    parser->previous_token = token_list_iterator_peek(&parser->token_iterator);
+    return token_list_iterator_next(&parser->token_iterator);
+}
+
+static ZencError expect_next_token(Parser* parser, bool* result)
+{
+    *result = token_list_iterator_has_next(&parser->token_iterator);
+    if (!*result)
+        return handle_missing_token_error(parser);
+    return ZENC_ERROR_OK;
+}
+
+static ZencError expect_token_type(Parser* parser, TokenType type, bool* result)
+{
+    ZencError err = expect_next_token(parser, result);
+    if (IS_ERROR(err) || !*result) return err;
+
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    *result = token->type == type;
+    if (!*result)
+        return handle_unexpected_token_error(parser);
+    return ZENC_ERROR_OK;
+}
+
+static ZencError expect_keyword(Parser* parser, const char* keyword, bool* result)
+{
+    ZencError err = expect_token_type(parser, TOKEN_TYPE_KEYWORD, result);
+    if (IS_ERROR(err) || !*result) return err;
+
+    const Token* token = token_list_iterator_peek(&parser->token_iterator);
+    *result = (strcmp(token->value, keyword) == 0);
+    if (!*result)
+        return handle_unexpected_token_error(parser);
+    return ZENC_ERROR_OK;
+}
+
+static ZencError expect_linebreak_or_end(Parser* parser, bool* result)
+{
+    if (!token_list_iterator_has_next(&parser->token_iterator))
+    {
+        *result = true;
+        return ZENC_ERROR_OK;
+    }
+
+    return expect_token_type(parser, TOKEN_TYPE_LINEBREAK, result);
+}
+
+static ZencError handle_unexpected_token_error(Parser* parser)
+{
+    ParserError* err = NULL;
+    const Token* error_token = token_list_iterator_peek(&parser->token_iterator);
+    ZencError e = parser_error_unexpected_token_new(error_token, &err);
+    ASSERT_NO_ERROR(e);
+    return handle_error(parser, err);
+}
+
+static ZencError handle_missing_token_error(Parser* parser)
+{
+    if (!parser->previous_token)
+        return ZENC_ERROR_INTERNAL;
+
+    ParserError* err = NULL;
+    ZencError e = parser_error_missing_token_new(parser->previous_token, &err);
+    ASSERT_NO_ERROR(e);
+    return handle_error(parser, err);
+}
+
+static ZencError handle_error(Parser* parser, ParserError* error)
+{
+    ZencError e = parser_error_list_append(parser->errors, error);
+    if (IS_ERROR(e))
+    {
+        parser_error_free(error);
+        return e;
+    }
+
+    advance_until_linebreak(parser);
+    return ZENC_ERROR_OK;
+}

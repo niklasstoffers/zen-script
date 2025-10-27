@@ -11,5 +11,6 @@ typedef struct {
 ZencError list_iterator_init(ListIterator* iterator, const LinkedList* list);
 bool list_iterator_has_next(const ListIterator* iterator);
 const void* list_iterator_next(ListIterator* iterator);
+const void* list_iterator_peek(const ListIterator* iterator);
 
 #endif

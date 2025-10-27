@@ -9,6 +9,8 @@
 #include <stdbool.h>
 
 static char* get_token_type_string(TokenType type);
+static char* expression_to_string(Expression* expression);
+static char* literal_to_string(Literal* literal);
 // static void print_tac_instruction(TACInstruction* instruction);
 // static char* expression_to_string(Expression* expression);
 
@@ -65,6 +67,51 @@ int main(int argc, char** argv)
                 printf("%s\n", get_token_type_string(token->type));
             else
                 printf("%s(%s), ", get_token_type_string(token->type), token->value);
+        }
+
+        printf("\n\n");
+        Parser* parser = NULL;
+        err = parser_new(tokens, &parser);
+        if (IS_ERROR(err))
+        {
+            printf("Could not allocate parser: %s\n", zenc_strerror(err));
+            return 1;
+        }
+
+        err = parser_parse(parser);
+        if (IS_ERROR(err))
+        {
+            printf("Error during parsing: %s\n", zenc_strerror(err));
+            return 1;
+        }
+
+        if (parser_had_error(parser))
+        {
+            const ParserErrorList* errors = parser_get_errors(parser);
+            ParserErrorListIterator parser_error_iterator;
+            (void)parser_error_list_iterator_init(&parser_error_iterator, errors);
+            while(parser_error_list_iterator_has_next(&parser_error_iterator))
+            {
+                const ParserError* parser_error = parser_error_list_iterator_next(&parser_error_iterator);
+                if (parser_error->type == PARSER_ERROR_MISSING_TOKEN)
+                    printf("Missing token after %s\n", parser_error->missing_token->previous_token->value);
+                else if (parser_error->type == PARSER_ERROR_UNEXPECTED_TOKEN)
+                    printf("Parser encountered unexpected token %s\n", parser_error->unexpected_token->token->value);
+            }
+        }
+        else
+        {
+            const StatementList* statements = parser_get_statements(parser);
+            StatementListIterator statement_iterator;
+            (void)statement_list_iterator_init(&statement_iterator, statements);
+            while(statement_list_iterator_has_next(&statement_iterator))
+            {
+                const Statement* statement = statement_list_iterator_next(&statement_iterator);
+                if (statement->type == STATEMENT_TYPE_DECLARATION)
+                    printf("Declaration: { Variable: %s, Expression: %s }\n", statement->declaration->variable, expression_to_string(statement->declaration->expression));
+                else if (statement->type == STATEMENT_TYPE_PRINT)
+                    printf("Print: { Expression: %s }\n", expression_to_string(statement->print_statement->expression));
+            }
         }
     }
 
@@ -209,6 +256,42 @@ static char* get_token_type_string(TokenType type)
         return "LINEBREAK";
     else if (type == TOKEN_TYPE_INVALID)
         return "INVALID";
+    return NULL;
+}
+
+static char* literal_to_string(Literal* literal)
+{
+    const char* type;
+    if (literal->type == LITERAL_TYPE_NUMBER)
+        type = "NUMBER";
+    else if (literal->type == LITERAL_TYPE_STRING)
+        type = "STRING";
+    else
+        return NULL;
+
+    size_t len = snprintf(NULL, 0, "{ Type: %s, Value: %s }", type, literal->value);
+    char* str = (char*)malloc(len + 1);
+    snprintf(str, len + 1, "{ Type: %s, Value: %s }", type, literal->value);
+    return str;
+}
+
+static char* expression_to_string(Expression* expression)
+{
+    if (expression->type == EXPRESSION_TYPE_LITERAL)
+    {
+        size_t len = snprintf(NULL, 0, "{ Literal: %s }", literal_to_string(expression->literal));
+        char* str = (char*)malloc(len + 1);
+        snprintf(str, len + 1, "{ Literal: %s }", literal_to_string(expression->literal));
+        return str;
+    }
+    else if (expression->type == EXPRESSION_TYPE_VARIABLE)
+    {
+        size_t len = snprintf(NULL, 0, "{ Variable: %s }", expression->variable);
+        char* str = (char*)malloc(len + 1);
+        snprintf(str, len + 1, "{ Variable: %s }", expression->variable);
+        return str;
+    }
+
     return NULL;
 }
 

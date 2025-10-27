@@ -27,3 +27,10 @@ const void* list_iterator_next(ListIterator* iterator)
     }
     return NULL;
 }
+
+const void* list_iterator_peek(const ListIterator* iterator)
+{
+    if (!iterator) return NULL;
+    if (!iterator->current) return NULL;
+    return iterator->current->data;
+}

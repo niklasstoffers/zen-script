@@ -1,6 +1,7 @@
 #ifndef TOKENS_H
 #define TOKENS_H
 
+#include "lib/errors.h"
 #include <stdlib.h>
 
 typedef enum {
@@ -18,6 +19,8 @@ typedef struct {
     size_t length;
 } Token;
 
+ZencError token_new(TokenType type, const char* value, Token** token);
+ZencError token_copy(const Token* token, Token** copy);
 void token_free(Token* token);
 
 #endif

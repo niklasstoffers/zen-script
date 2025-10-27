@@ -1,15 +1,24 @@
-// #ifndef PARSER_H
-// #define PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
-// #include "lib/errors.h"
-// #include "tokenizer/tokenizer.h"
-// #include "parser/ast_defs.h"
+#include "lib/errors.h"
+#include "tokenizer/token_list.h"
+#include "parser/parser_error_list.h"
+#include "ast/program.h"
+#include <stdbool.h>
 
-// typedef enum {
-//     PARSER_ERROR_OK,
-//     PARSER_ERROR_INVALID
-// } ParserError;
+typedef struct {
+    TokenListIterator token_iterator;
+    StatementList* statements;
+    ParserErrorList* errors;
+    const Token* previous_token;
+} Parser;
 
-// ZencError parse_program(TokenStream* tokens, Program** program, ParserError* error);
+ZencError parser_new(const TokenList* tokens, Parser** parser);
+ZencError parser_parse(Parser* parser);
+const StatementList* parser_get_statements(const Parser* parser);
+bool parser_had_error(const Parser* parser);
+const ParserErrorList* parser_get_errors(const Parser* parser);
+void parser_free(Parser* parser);
 
-// #endif
+#endif

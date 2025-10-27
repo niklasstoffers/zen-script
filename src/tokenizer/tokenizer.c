@@ -117,12 +117,10 @@ static ZencError tokenizer_next(Tokenizer* tokenizer, Token** token)
     char *token_value = strndup(next_token, token_length);
     ASSERT_ALLOC(token_value);
 
-    Token* t = (Token*)malloc(sizeof(Token));
-    ASSERT_ALLOC_FREE(t, token_value);
-
-    t->value = token_value;
-    t->length = token_length;
-    t->type = get_token_type(token_value);
+    Token* t = NULL;
+    ZencError err = token_new(get_token_type(token_value), token_value, &t);
+    ASSERT_NO_ERROR_FREE(err, token_value);
+    free(token_value);
 
     tokenizer->pos = new_tokenizer_pos;
     
@@ -142,17 +140,11 @@ static TokenType get_token_type(const char* token)
 
 static ZencError add_invalid_token_error(Tokenizer* tokenizer, const char* token)
 {
-    TokenizerError* error = (TokenizerError*)malloc(sizeof(TokenizerError));
-    ASSERT_ALLOC(error);
+    TokenizerError* error = NULL;
+    ZencError err = tokenizer_error_new(token, 0, 0, &error);
+    ASSERT_NO_ERROR(err);
 
-    char* token_value = strdup(token);
-    ASSERT_ALLOC_FREE(token_value, error);
-
-    error->token = token_value;
-    error->line = 0;
-    error->pos = 0;
-
-    ZencError err = tokenizer_error_list_append(tokenizer->error_list, error);
+    err = tokenizer_error_list_append(tokenizer->error_list, error);
     if (IS_ERROR(err))
     {
         tokenizer_error_free(error);
